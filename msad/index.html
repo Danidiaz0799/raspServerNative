@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSAD - Servidor de Archivos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        ul {
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>MSAD - Servidor de Archivos</h1>
+    
+    <div class="container">
+        <h2>Bienvenido al Servidor MSAD</h2>
+        <p>
+            Este servidor HTTP proporciona acceso a los respaldos y datos exportados
+            desde el sistema RaspServer. Puede navegar por los directorios para acceder
+            a los archivos disponibles.
+        </p>
+        
+        <h2>Directorios Disponibles</h2>
+        <ul>
+            <li><a href="/backups">Respaldos</a> - Contiene las copias de seguridad de la base de datos</li>
+            <li><a href="/data">Datos</a> - Archivos de datos complementarios</li>
+        </ul>
+        
+        <h2>Cómo Utilizar</h2>
+        <ol>
+            <li>Haga clic en uno de los enlaces de directorio para explorar su contenido</li>
+            <li>Navegue hasta el archivo que necesite</li>
+            <li>Haga clic en el nombre del archivo para descargarlo</li>
+        </ol>
+        
+        <h2>Información del Sistema</h2>
+        <p>
+            Si necesita crear un nuevo respaldo, debe hacerlo desde la terminal
+            ejecutando el script <code>msad/run_msad.py</code> y seleccionando
+            la opción correspondiente del menú.
+        </p>
+        
+        <a href="/" class="button">Actualizar Página</a>
+    </div>
+</body>
+</html> 
