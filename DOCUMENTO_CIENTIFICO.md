@@ -51,133 +51,65 @@ Este proyecto se posiciona dentro de este contexto abordando directamente la nec
 
 ### 4.1 Marco Teórico
 
-El marco teórico de este proyecto fundamenta los aspectos electrónicos y biológicos necesarios para el diseño e implementación de un sistema IoT distribuido para el cultivo in-door de setas Orellana Rosada. Este cultivo requiere un control preciso de condiciones ambientales, como temperatura y humedad, para optimizar su producción y calidad. El presente documento desarrolla las bases tecnológicas y técnicas que sustentan el proyecto.
+El marco teórico de este proyecto fundamenta los aspectos electrónicos y biológicos necesarios para el diseño e implementación del sistema IoT distribuido propuesto para el cultivo *in-door* de setas Orellana Rosada. Este cultivo requiere un control preciso de condiciones ambientales para optimizar su producción y calidad, lo cual justifica la implementación de un sistema automatizado y centralizado.
 
 #### 4.1.1 Características del Cultivo de Setas Orellana Rosada
 La *Pleurotus djamor*, conocida como seta Orellana Rosada, es un hongo valorado por su alto contenido nutricional y su aplicación en la industria alimentaria. Requiere condiciones específicas para garantizar un crecimiento óptimo:
-*   **Rango de Temperatura:** 22-28 °C. La temperatura afecta directamente el desarrollo micelial y la fructificación.
-*   **Humedad Relativa:** 85-95%. Es fundamental para evitar deshidratación y promover un desarrollo uniforme.
-*   **Sustrato:** Comúnmente compuesto por mezclas lignocelulósicas (paja de trigo, aserrín), esterilizado para evitar contaminación.
-*   **Luz:** Aunque no realizan fotosíntesis, necesitan niveles bajos de luz difusa para estimular la fructificación.
+*   **Rango de Temperatura:** 22-28 °C. Afecta directamente el desarrollo micelial y la fructificación.
+*   **Humedad Relativa:** 85-95%. Esencial para evitar deshidratación y promover un desarrollo uniforme.
+*   **Sustrato:** Mezclas lignocelulósicas (paja, aserrín), esterilizadas.
+*   **Luz:** Niveles bajos de luz difusa estimulan la fructificación.
 
-Cualquier desviación en estas condiciones puede reducir la calidad del cultivo, incrementar el desperdicio o afectar negativamente la productividad. Por ello, un sistema automatizado distribuido es clave para mantener estas variables bajo control en múltiples cultivos simultáneamente.
+El control preciso de estas variables es fundamental, y la gestión distribuida de múltiples cultivos simultáneos requiere un sistema automatizado como el propuesto para mantener la consistencia y eficiencia.
 
 #### 4.1.2 Componentes Electrónicos Fundamentales
-El sistema electrónico está compuesto por una red de Raspberry Pis que actúan como clientes y servidor, junto con sensores y actuadores que interactúan mediante una red IoT para medir y ajustar las variables ambientales.
+El sistema se basa en una red de dispositivos IoT (clientes y servidor) con sensores y actuadores específicos.
 
 **Sensores:**
-1.  **SHT3x:**
-    *   Sensor digital de alta precisión.
-    *   Mide temperatura (-40 a 125°C) y humedad relativa (0-100%).
-    *   Precisión de temperatura: ±0.3°C.
-    *   Precisión de humedad: ±2%.
-    *   Interfaz I2C.
+1.  **SHT3x:** Sensor digital de alta precisión para Temperatura y Humedad Relativa, comunicándose vía I2C. Es el sensor primario para monitorizar las variables ambientales críticas (Objetivo Específico 2).
 
 **Actuadores:**
-1.  **Ventiladores:**
-    *   Regulan la circulación de aire y/o renovación (CO₂).
-    *   Control mediante GPIO de Raspberry Pi (directo, relé o driver).
-2.  **Humidificadores:**
-    *   Generan niebla ultrafina para mantener la humedad.
-    *   Control mediante GPIO de Raspberry Pi (generalmente vía relé).
-3.  **Iluminación LED:**
-    *   Control de intensidad lumínica o ciclo ON/OFF.
-    *   Manejo mediante GPIO de Raspberry Pi (relé o driver/MOSFET).
+1.  **Ventiladores:** Para regulación de aire/CO₂.
+2.  **Humidificadores:** Para control de humedad.
+3.  **Iluminación LED:** Para control de luz.
+    *   *Todos controlados mediante GPIO, permitiendo la acción remota desde el servidor central (Objetivo Específico 2).*
 
 **Plataforma de Control:**
-1.  **Raspberry Pi Cliente (Nodo):**
-    *   Modelo: Raspberry Pi 3B+ (u otros modelos/microcontroladores compatibles con MQTT).
-    *   Sistema Operativo: Raspberry Pi OS (o firmware específico si es ESP/Arduino).
-    *   Funciones:
-        *   Lectura de sensores (ej. vía I2C).
-        *   Control de actuadores (ej. vía GPIO).
-        *   Cliente MQTT para comunicación con servidor.
-        *   Identificación única por cultivo (`client_id`).
-2.  **Raspberry Pi Servidor Central:**
-    *   Modelo: Raspberry Pi 3B+ (o superior recomendado).
-    *   Sistema Operativo: Raspberry Pi OS.
-    *   Funciones:
-        *   Broker MQTT central (ej. Mosquitto).
-        *   Servidor web (Flask) para API y frontend.
-        *   Base de datos (SQLite) para almacenamiento de datos históricos.
-        *   Gestión de múltiples clientes (`client_id`).
-        *   **Ejecución del Módulo de Almacenamiento y Datos (MSAD)** para backups y reportes.
+1.  **Nodo Cliente (Raspberry Pi/Compatible):**
+    *   Funciones: Lectura de sensores (SHT3x), control local de actuadores vía GPIO, **cliente MQTT para comunicación bidireccional** (Objetivo Específico 1), y **identificación única del cultivo (`client_id`)** para gestión diferenciada (Objetivo Específico 2).
+2.  **Servidor Central (Raspberry Pi):**
+    *   Funciones: Actúa como **Broker MQTT central** (Objetivo Específico 1), ejecuta el **servidor web (Flask)** para la API RESTful y sirve la **interfaz web (Angular)** (Objetivo Específico 3), gestiona la **base de datos (SQLite)** para históricos, coordina **múltiples clientes (`client_id`)** (Objetivo Específico 2), y ejecuta el **Módulo de Almacenamiento y Datos (MSAD)** para backups y reportes (Objetivo Específico 4).
 
 #### 4.1.3 Arquitectura de Comunicación
 
-**Protocolo MQTT:**
-1.  **Roles:**
-    *   **Clientes (Nodos):** Raspberry Pis (u otros dispositivos) en cada cultivo que publican datos de sensores y estados, y se suscriben a comandos de actuadores.
-    *   **Servidor (Broker):** Instancia central de Mosquitto (u otro broker MQTT) que gestiona la comunicación publicador/suscriptor entre todos los nodos y el servidor de aplicación.
-    *   **Servidor (Aplicación):** La aplicación Flask actúa también como cliente MQTT, suscribiéndose a los datos de los nodos y publicando comandos.
-2.  **Tópicos (Ejemplo de estructura):**
-    *   Publicación de datos: `sensor/[id_cultivo]/temperatura`, `sensor/[id_cultivo]/humedad`, `sensor/[id_cultivo]/luz`, `estado/[id_cultivo]`
-    *   Publicación de comandos: `actuador/[id_cultivo]/[dispositivo]/set` (Payload: "ON", "OFF", valor)
-    *   Publicación de estado actuador: `actuador/[id_cultivo]/[dispositivo]/state` (Payload: "ON", "OFF", valor)
+**Protocolo MQTT:** Fundamental para la interconexión (Objetivo Específico 1).
+1.  **Roles:** Clientes (Nodos) publican datos y suscriben a comandos; Broker (Servidor) gestiona el flujo de mensajes; Aplicación (Servidor) actúa como cliente para interactuar con el broker.
+2.  **Tópicos:** Estructurados jerárquicamente para identificar el cultivo (`[id_cultivo]`/`client_id`) y la función (sensor/actuador/estado), permitiendo la gestión individualizada (Objetivo Específico 2). Ejemplo: `sensor/[client_id]/temperatura`, `actuador/[client_id]/[dispositivo]/set`.
 
-*(Nota: Asegurar que esta estructura de tópicos coincida con la implementación final o la descrita en el README)*
-
-**Flujo de Datos:**
-1.  Cada **Nodo Cliente**:
-    *   Lee datos de sus sensores periódicamente.
-    *   Publica las lecturas en sus tópicos MQTT específicos (`sensor/...`, `estado/...`).
-    *   Se suscribe y escucha comandos en sus tópicos de actuador (`actuador/.../set`).
-    *   (Opcional) Publica el estado actual de sus actuadores (`actuador/.../state`).
-2.  **Servidor Central (Aplicación Flask/MQTT Client):**
-    *   Se suscribe a los tópicos de datos de todos los clientes (`sensor/+/...`, `estado/+/...`).
-    *   Recibe los datos, los procesa y los almacena en la base de datos.
-    *   Se suscribe a los estados de los actuadores (si los nodos los publican).
-    *   Publica comandos en los tópicos de actuador (`actuador/.../set`) basado en la lógica de control (automática o manual desde la API/web).
-    *   Sirve la interfaz web y la API RESTful para monitoreo y control.
-    *   Interactúa con el **módulo MSAD** para operaciones de backup y reporte.
+**Flujo de Datos:** Los Nodos publican datos periódicamente; el Servidor Central recibe, almacena, procesa, y publica comandos según la lógica de control y las interacciones desde la interfaz web (Objetivo Específico 3) o la API. El módulo MSAD accede a la base de datos para sus funciones (Objetivo Específico 4).
 
 #### 4.1.4 Impacto del Sistema Distribuido
-*   **Gestión Centralizada:**
-    *   Control unificado de múltiples cultivos desde una única interfaz.
-    *   Monitoreo en tiempo real del estado agregado de todas las instalaciones.
-    *   Optimización del uso de recursos humanos y técnicos.
-*   **Escalabilidad:**
-    *   Facilidad para añadir nuevos nodos/cultivos al sistema existente.
-    *   Arquitectura modular que permite adaptaciones y expansiones.
-    *   Mantenimiento potencialmente simplificado al centralizar la lógica principal.
-*   **Eficiencia Operativa:**
-    *   Reducción de costos asociados a la supervisión manual individualizada.
-    *   Optimización del consumo de recursos (energía, agua) mediante control preciso.
-    *   Mejora potencial en la calidad y consistencia del producto final a través de condiciones ambientales estables.
+La arquitectura propuesta permite:
+*   **Gestión Centralizada:** Supervisión y control unificado de múltiples unidades (Objetivo Específico 3).
+*   **Escalabilidad:** Fácil adición de nuevos nodos/cultivos (inherente a la arquitectura MQTT y gestión por `client_id` - Objetivo Específico 2).
+*   **Eficiencia Operativa:** Optimización de recursos y mejora de consistencia.
 
 ### 4.2 Marco Legal
 
-*(Esta sección se incluye tal como la proporcionaste, asumiendo que es adecuada para tu contexto. Si necesitas ajustes específicos para Colombia u otra región, házmelo saber.)*
-
-El marco legal de este proyecto asegura que el sistema IoT distribuido para el cultivo de setas Orellana Rosada cumpla con los estándares de calidad, seguridad y sostenibilidad necesarios.
+El marco legal orienta el desarrollo del sistema para cumplir con estándares de calidad, seguridad y sostenibilidad.
 
 #### 4.2.1 Normas de Calidad y Seguridad
 
-**Normas Internacionales:**
-*   ISO/IEC 27001: Gestión de seguridad de la información en sistemas IoT.
-*   IEEE 802.11: Estándares para redes inalámbricas (aplicable a nodos WiFi).
-*   MQTT v3.1.1/v5.0: Especificaciones del protocolo de comunicación IoT utilizado.
+**Normas Internacionales:** Se consideran estándares como ISO/IEC 27001 (seguridad información IoT), IEEE 802.11 (redes inalámbricas) y las especificaciones del protocolo MQTT (v3.1.1/v5.0) utilizado (Objetivo Específico 1).
 
-**Normas Nacionales (Ejemplo Colombia):**
-*   RETIE: Reglamento Técnico de Instalaciones Eléctricas (para seguridad de instalaciones).
-*   Resolución CRC 5050 de 2016: Regulación de redes y servicios de telecomunicaciones (uso del espectro, etc.).
-*   Ley 1581 de 2012: Protección de datos personales (si el sistema maneja datos de usuarios).
+**Normas Nacionales (Ejemplo Colombia):** Se tienen en cuenta regulaciones como RETIE (instalaciones eléctricas), normativas CRC (telecomunicaciones) y Ley 1581 de 2012 (protección de datos personales).
 
 **Normativas Específicas Aplicables al Sistema:**
-*   **Seguridad de Datos:**
-    *   Consideraciones sobre encriptación en comunicaciones MQTT (ej. TLS).
-    *   Métodos de autenticación de dispositivos cliente en el broker MQTT.
-    *   Protección de datos almacenados en la base de datos y backups.
-*   **Seguridad Eléctrica:**
-    *   IEC 60950-1 / IEC 62368-1: Normas de seguridad para equipos de tecnología de la información y comunicaciones.
-    *   Implementación de protecciones contra sobretensiones.
-    *   Uso de fuentes de alimentación certificadas y aislamiento eléctrico adecuado entre bajo voltaje (RPi) y alto voltaje (actuadores).
-*   **Sostenibilidad:**
-    *   Consideraciones sobre eficiencia energética de los dispositivos seleccionados.
-    *   Gestión responsable de recursos (agua, energía para actuadores).
-    *   Minimización del impacto ambiental (gestión de residuos electrónicos al final de vida útil).
+*   **Seguridad de Datos:** Consideraciones sobre seguridad en MQTT, autenticación de dispositivos y protección de datos almacenados y en backups (relevante para Objetivo Específico 4).
+*   **Seguridad Eléctrica:** Cumplimiento de normas para equipos electrónicos (IEC 62368-1), protección y aislamiento.
+*   **Sostenibilidad:** Consideraciones sobre eficiencia energética y gestión de recursos.
 
-Este marco legal orienta una implementación segura y eficiente del sistema, buscando cumplir con las normativas relevantes mientras se mantiene la flexibilidad necesaria para la funcionalidad y escalabilidad futura.
+Este marco busca una implementación segura y conforme a normativas.
 
 ## 5. Objetivos
 
@@ -192,7 +124,42 @@ Desarrollar una serie de nodos dentro de una red de monitoreo y control ambienta
 3.  Crear una interfaz web (Angular) que permita visualizar y controlar múltiples cultivos desde un panel centralizado, con la capacidad de generar reportes de datos históricos (vía MSAD) y visualizar alertas del sistema.
 4.  Implementar un sistema de respaldo y gestión de datos local, utilizando el **módulo MSAD** integrado, para realizar copias de seguridad automáticas/manuales y permitir la restauración de la base de datos del sistema.
 
-## Bibliografía
+## 6. Alternativa de Solución Propuesta
+
+La solución desarrollada implementa una **arquitectura cliente-servidor distribuida** para responder a las necesidades de monitoreo y control centralizado de múltiples unidades de cultivo de Orellana Rosada, alineándose con el Objetivo General.
+
+### 6.1 Componentes de la Solución
+
+*   **Nodo Cliente (por cultivo):**
+    *   Plataforma: Raspberry Pi 3B+ o compatible.
+    *   Sensores: **SHT3x (Temp/Humedad)** para monitorización ambiental (Objetivo Específico 2).
+    *   Actuadores: Ventiladores, Humidificadores, LEDs, controlados vía GPIO según comandos del servidor (Objetivo Específico 2).
+    *   Software: **Cliente MQTT** para comunicación (Objetivo Específico 1) e identificación única (`client_id`) (Objetivo Específico 2).
+
+*   **Servidor Central (Raspberry Pi):**
+    *   Plataforma: Raspberry Pi 3B+ o superior.
+    *   **Broker MQTT:** Gestión central de mensajes (Objetivo Específico 1).
+    *   **Servidor de Aplicación (Flask):** Provee la API RESTful y la lógica de control.
+    *   **Interfaz Web (Angular):** Panel centralizado para visualización y control (Objetivo Específico 3).
+    *   **Base de Datos (SQLite):** Almacenamiento de datos históricos por `client_id`.
+    *   **Módulo de Almacenamiento y Datos (MSAD):** Integrado para **backups, reportes y gestión de datos** (Objetivo Específico 4).
+
+*   **Red de Comunicación:**
+    *   **Protocolo MQTT:** Comunicación eficiente nodo-servidor (Objetivo Específico 1).
+    *   Red Local (WiFi/Ethernet).
+
+### 6.2 Especificaciones Técnicas Clave
+
+*   **Hardware Base:** Raspberry Pi 3B+.
+*   **Sensor Ambiental:** SHT3x (I2C).
+*   **Software Servidor:** Raspberry Pi OS, Mosquitto, Python/Flask, SQLite, Angular.
+*   **Librerías Python Clave:** `paho-mqtt` (para Obj. 1), `Flask`, `Flask-Cors`, `aiosqlite`, `numpy`, `schedule` (para Obj. 4 - MSAD).
+*   **Protocolo:** MQTT v3.1.1/v5.0.
+*   **Estructura de Tópicos MQTT:** Jerárquica basada en `[client_id]`, `sensor`/`actuador`/`estado`, y `[tipo]`, permitiendo la gestión individualizada y comunicación bidireccional (Obj. 1 y 2).
+
+Esta solución ofrece un sistema **distribuido y centralizado**, utilizando hardware accesible y protocolos estándar para cumplir los objetivos de monitoreo, control, visualización y gestión de datos para múltiples cultivos de Orellana Rosada, con énfasis en la fiabilidad aportada por el módulo MSAD.
+
+## 7. Bibliografía
 
 [1] M. A. R. Sarkar et al., "Smart Agriculture Using IoT and Machine Learning: A Comprehensive Review," IEEE Access, vol. 9, pp. 140067–140103, 2021.
 
