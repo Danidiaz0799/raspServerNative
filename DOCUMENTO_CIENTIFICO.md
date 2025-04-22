@@ -228,7 +228,71 @@ El enfoque del proyecto es experimental y aplicado, basado en una arquitectura c
 
 Esta metodología está diseñada para ser práctica y eficiente, enfocándose en la implementación de una arquitectura distribuida que permita el monitoreo y control centralizado de múltiples cultivos de setas Orellana Rosada. El resultado final será un sistema funcional y documentado que facilite su replicación y mantenimiento.
 
-## 8. Bibliografía
+## 8. CRONOGRAMA DE ACTIVIDADES
+
+El desarrollo del proyecto se distribuye en aproximadamente cuatro meses y medio, asegurando que cada fase se ejecute de manera ordenada y eficiente, culminando con la entrega final el 1 de mayo. Las actividades se presentan con sus respectivos períodos de inicio y finalización.
+
+**Relación de Actividades con su Período de Ejecución Ajustado:**
+
+| Actividad                                       | Inicio    | Duración (días) | Fin       |
+| :---------------------------------------------- | :-------- | :-------------- | :-------- |
+| Definir requerimientos y objetivos técnicos     | 10-dic-23 | 5               | 14-dic-23 |
+| Diseño del diagrama de bloques                  | 15-dic-23 | 7               | 21-dic-23 |
+| Adquisición de componentes                      | 22-dic-23 | 10              | 31-dic-23 |
+| Configuración inicial del entorno               | 1-ene-24  | 7               | 7-ene-24  |
+| Instalación de sensores y actuadores          | 8-ene-24  | 10              | 17-ene-24 |
+| Configuración de Raspberry Pi (Cliente y Servidor) | 18-ene-24 | 8               | 25-ene-24 |
+| Pruebas iniciales del sistema                   | 26-ene-24 | 10              | 4-feb-24  |
+| Optimización del sistema                        | 5-feb-24  | 14              | 18-feb-24 |
+| Ejecución de pruebas prolongadas                | 19-feb-24 | 14              | 3-mar-24  |
+| Documentación inicial (introducción, objetivos) | 4-mar-24  | 10              | 13-mar-24 |
+| Elaboración del marco teórico y estado del arte | 14-mar-24 | 15              | 28-mar-24 |
+| Descripción del sistema implementado            | 29-mar-24 | 12              | 9-abr-24  |
+| Análisis de resultados                          | 10-abr-24 | 10              | 19-abr-24 |
+| Redacción de conclusiones                       | 20-abr-24 | 7               | 26-abr-24 |
+| Revisión y entrega final de la monografía       | 27-abr-24 | 5               | 1-may-24  |
+
+*(Nota: El diagrama de Gantt visual correspondiente a esta tabla debería reflejar estas fechas ajustadas.)*
+
+## 9. IMPACTO ESPERADO
+
+El desarrollo de una **red de monitoreo y control ambiental para la gestión centralizada de múltiples cultivos** de setas Orellana Rosada representa un avance significativo en la modernización de la agricultura controlada en Colombia. Su impacto trasciende el ámbito técnico, contribuyendo a la mejora de la productividad, la **accesibilidad tecnológica para gestionar operaciones distribuidas**, y la sostenibilidad del sector.
+Este sistema permite a los productores automatizar el control ambiental de **forma coordinada en diversas unidades**, optimizando variables críticas como temperatura y humedad, lo que reduce el margen de error en la producción y minimiza costos operativos asociados a la supervisión individual. A nivel regional y nacional, su implementación favorece la integración de tecnologías de bajo costo en la agricultura, impulsando la innovación en sectores que tradicionalmente han tenido limitado acceso a la automatización centralizada.
+
+### 9.1 Impacto Social
+El sistema desarrollado tiene un impacto directo en la comunidad agrícola, especialmente en pequeños y medianos productores dedicados al cultivo de hongos en entornos controlados, **particularmente aquellos que gestionan o desean escalar a múltiples unidades de cultivo**. La implementación de esta tecnología democratiza el acceso a herramientas de automatización y **gestión centralizada**, permitiendo que agricultores con recursos limitados puedan mejorar la eficiencia y rentabilidad de su producción distribuida.
+
+**Beneficiarios Clave:**
+*   **Pequeños y medianos productores agrícolas:** Contarán con un sistema accesible que les permitirá optimizar sus procesos **en múltiples cultivos simultáneamente**, reduciendo pérdidas y garantizando una mayor estabilidad en la producción.
+*   **Centros de formación técnica y universidades:** El proyecto servirá como base para la enseñanza de tecnologías aplicadas a la agricultura, promoviendo el aprendizaje en automatización, **sistemas distribuidos basados en IoT**, y gestión de datos agrícolas.
+*   **Asociaciones agrícolas y gremios:** Entidades del sector podrán utilizar esta tecnología como referencia para la modernización y escalabilidad de las operaciones de sus asociados.
+*   **Entidades gubernamentales y ONG:** Programas enfocados en la sostenibilidad agrícola podrán incorporar esta solución en estrategias de apoyo a comunidades rurales para mejorar su competitividad.
+
+### 9.2 Impacto Económico
+El proyecto genera un impacto económico positivo al mejorar la eficiencia de la producción de hongos mediante la **gestión centralizada**, la reducción de costos operativos y el incremento de la productividad. Al automatizar procesos clave de forma coordinada, se minimizan pérdidas por inconsistencias entre cultivos y se optimiza el uso de recursos.
+
+**Beneficios Clave:**
+*   **Reducción de costos operativos:**
+    *   Disminución del desperdicio de insumos mediante el ajuste automático y consistente de temperatura y humedad en todas las unidades.
+    *   Ahorro en mano de obra, al **centralizar la supervisión** en lugar de requerir monitoreo constante e individualizado.
+    *   Optimización del consumo energético, al coordinar el funcionamiento de dispositivos.
+*   **Aumento de la rentabilidad:**
+    *   Se estima que un sistema automatizado y centralizado puede aumentar la eficiencia global del cultivo entre un 20% y un 30%, al mantener condiciones óptimas de forma homogénea o adaptada por unidad.
+    *   La implementación de tecnologías de control y **la capacidad de gestionar datos históricos (vía MSAD)** permite a los productores mejorar la calidad y consistencia del producto, facilitando el acceso a mercados más exigentes.
+
+### 9.3 Impacto Tecnológico
+Desde el punto de vista tecnológico, este proyecto representa una innovación en la aplicación de **sistemas distribuidos IoT para la agricultura controlada**, particularmente en el cultivo de hongos.
+
+**Principales contribuciones tecnológicas:**
+*   **Mejora sobre sistemas existentes:**
+    *   A diferencia de soluciones comerciales costosas o sistemas aislados, este proyecto ofrece un **sistema integrado y accesible** para la gestión de múltiples unidades.
+    *   Se basa en hardware de código abierto (Raspberry Pi) y protocolos estándar (MQTT), facilitando su **replicación, escalabilidad** y mejora continua.
+    *   Incorpora el **módulo MSAD**, proporcionando una solución **local y robusta para la gestión de datos (backups y reportes)**, un aspecto crucial a menudo descuidado en sistemas de bajo costo.
+*   **Innovación en el mercado local:**
+    *   Representa una solución potencialmente pionera en Colombia para la **gestión centralizada y automatizada** del cultivo de hongos a esta escala.
+    *   Su diseño modular permite que la tecnología sea adaptable a otros tipos de cultivos en entornos controlados y distribuidos.
+
+## 10. Bibliografía
 
 [1] M. A. R. Sarkar et al., "Smart Agriculture Using IoT and Machine Learning: A Comprehensive Review," IEEE Access, vol. 9, pp. 140067–140103, 2021.
 
