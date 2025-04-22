@@ -292,7 +292,64 @@ Desde el punto de vista tecnológico, este proyecto representa una innovación e
     *   Representa una solución potencialmente pionera en Colombia para la **gestión centralizada y automatizada** del cultivo de hongos a esta escala.
     *   Su diseño modular permite que la tecnología sea adaptable a otros tipos de cultivos en entornos controlados y distribuidos.
 
-## 10. Bibliografía
+## 10. RESULTADOS ESPERADOS
+
+El desarrollo de la red de monitoreo y control ambiental distribuida para el cultivo de setas Orellana Rosada permitirá alcanzar resultados verificables que optimicen la producción agrícola mediante el uso de tecnología accesible y eficiente. Se espera que el sistema funcione de manera autónoma, ajustando variables ambientales como temperatura y humedad en tiempo real, reduciendo la intervención manual y garantizando condiciones óptimas para el crecimiento del cultivo en **múltiples unidades gestionadas centralmente**.
+
+### 10.1 Resultados Técnicos
+*   **Sistema de Control Distribuido Funcional:**
+    *   Red operativa de nodos cliente (Raspberry Pi o compatibles) para monitoreo y control individualizado.
+    *   Servidor central con broker MQTT estable y aplicación Flask funcionando correctamente.
+    *   Comunicación bidireccional MQTT efectiva entre nodos y servidor.
+    *   Capacidad demostrada de controlar las variables ambientales dentro de los rangos objetivo (ej. 22-28°C, 85-95% humedad).
+*   **Interfaz de Usuario Operativa:**
+    *   Panel web centralizado desarrollado en Angular, accesible y funcional.
+    *   Visualización en tiempo real de datos de sensores de múltiples cultivos.
+    *   Sistema funcional de alertas y notificaciones básicas.
+    *   Capacidad de generar reportes históricos y visualizar tendencias **(a través del módulo MSAD)**.
+*   **Módulo MSAD Funcional:**
+    *   Sistema de backups automáticos y manuales operativo.
+    *   Capacidad de listar, descargar y restaurar backups funcional.
+    *   Generación de reportes en formatos JSON/CSV validada.
+
+### 10.2 Resultados Operativos
+*   **Automatización Efectiva:**
+    *   Control automático de actuadores funcionando correctamente basado en lecturas de sensores y parámetros definidos.
+    *   Mantenimiento estable de las condiciones ambientales óptimas definidas por cultivo.
+    *   Reducción significativa de la necesidad de intervención manual en operaciones rutinarias de control ambiental.
+    *   (Opcional) Implementación de un sistema básico de respaldo ante fallos de comunicación (ej. comportamiento por defecto de actuadores).
+*   **Eficiencia Mejorada:**
+    *   Evidencia de optimización en el uso de recursos (energía para actuadores, agua para humidificación) comparado con control manual.
+    *   Reducción de pérdidas potenciales de cultivo debidas a fluctuaciones ambientales no controladas.
+    *   Mejora en la consistencia y calidad potencial del producto final.
+    *   Demostración de la escalabilidad del sistema al gestionar datos y control para un número definido de cultivos simultáneamente.
+
+### 10.3 Resultados Documentales
+*   **Documentación Técnica Completa:**
+    *   Manual detallado de instalación y configuración para el servidor y los nodos cliente.
+    *   Guías de mantenimiento básico y resolución de problemas comunes.
+    *   Diagramas actualizados de la arquitectura del sistema y conexiones físicas.
+    *   Código fuente comentado y organizado en un repositorio.
+    *   Documentación específica del módulo MSAD (contenida en `MSAD_DETAILS.md`).
+*   **Documentación Académica:**
+    *   Monografía final del proyecto completa y estructurada.
+    *   Análisis de los resultados obtenidos y métricas de rendimiento del sistema implementado.
+    *   Establecimiento de una base documentada para futuras investigaciones o mejoras en automatización agrícola para este tipo de cultivo.
+    *   Evaluación preliminar de la viabilidad de adaptar el sistema a otros tipos de cultivos con necesidades similares.
+
+### 10.4 Impacto Esperado en el Sector
+*   **Modernización y Accesibilidad:**
+    *   Disponibilidad de una solución tecnológica de control ambiental accesible y escalable para el cultivo de Orellana Rosada.
+    *   Provisión de un modelo replicable para otros productores interesados en la automatización.
+    *   Contribución al fomento de la agricultura de precisión en el sector fungícola.
+*   **Transferencia de Conocimiento:**
+    *   Material base para capacitación técnica en IoT aplicado a la agricultura.
+    *   Documentación de una implementación práctica y mejores prácticas observadas.
+    *   Promoción del uso de tecnologías de código abierto en el sector agrícola.
+
+Finalmente, se espera que este proyecto contribuya a la modernización del sector agrícola colombiano al proporcionar una solución tecnológica accesible y escalable. Su implementación fomentará la adopción de herramientas digitales en la producción agrícola, promoviendo la innovación y la sostenibilidad en el sector.
+
+## 11. Bibliografía
 
 [1] M. A. R. Sarkar et al., "Smart Agriculture Using IoT and Machine Learning: A Comprehensive Review," IEEE Access, vol. 9, pp. 140067–140103, 2021.
 
