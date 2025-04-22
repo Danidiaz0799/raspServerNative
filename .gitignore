@@ -1,0 +1,10 @@
+# Cache folders
+__pycache__/
+.cache
+.webassets-cache
+.pytest_cache/
+.mypy_cache/
+.pytype/
+
+# Angular cache
+angular_app/tmp/
