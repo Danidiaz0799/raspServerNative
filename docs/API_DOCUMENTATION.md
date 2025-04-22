@@ -1,6 +1,6 @@
 # Documentación de la API RESTful - Servidor de Cultivo
 
-Esta API permite interactuar con el servidor Flask para monitorear y controlar el sistema de cultivo. Todos los endpoints están bajo el prefijo `/api`.
+Esta API permite interactuar con el servidor Flask para monitorear y controlar el sistema de cultivo distribuido. Todos los endpoints están bajo el prefijo `/api`. La base para las URLs de ejemplo es `http://raspserver.local:5000`.
 
 ## Autenticación
 
@@ -8,9 +8,9 @@ Actualmente, la API no implementa un sistema de autenticación explícito.
 
 ## Formato de Respuesta
 
-*   **Éxito:** Generalmente `200 OK` con un cuerpo JSON que contiene los datos solicitados o un mensaje de éxito.
-*   **Error del Cliente:** `4xx` (ej. `400 Bad Request`, `404 Not Found`) con un cuerpo JSON describiendo el error: `{ "success": false, "error": "Mensaje descriptivo" }`.
-*   **Error del Servidor:** `500 Internal Server Error` con un cuerpo JSON: `{ "success": false, "error": "Mensaje de error interno" }`.
+*   **Éxito:** Generalmente `200 OK` o `201 Created` con un cuerpo JSON que contiene los datos solicitados o un mensaje de éxito.
+*   **Error del Cliente:** `4xx` (ej. `400 Bad Request`, `404 Not Found`) con un cuerpo JSON describiendo el error: `{ "error": "Mensaje descriptivo" }`.
+*   **Error del Servidor:** `500 Internal Server Error` con un cuerpo JSON: `{ "error": "Mensaje de error interno" }`.
 
 ---
 
@@ -18,334 +18,1098 @@ Actualmente, la API no implementa un sistema de autenticación explícito.
 
 ### Clientes (`/clients`)
 
-Gestiona los dispositivos cliente MQTT conectados al sistema.
+Gestiona los dispositivos cliente (nodos de cultivo) registrados en el sistema.
 
-*   **`GET /clients`**
-    *   Descripción: Obtiene una lista de todos los clientes registrados.
-    *   Respuesta Éxito (`200 OK`): `[ { "client_id": "...", "device_type": "...", "location": "...", "status": "online/offline", "enabled": true/false, "last_seen": "..." }, ... ]`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene una lista de todos los clientes registrados.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>Ninguno</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`POST /clients`**
-    *   Descripción: Registra un nuevo cliente (típicamente llamado por el propio cliente vía MQTT, pero expuesto en API).
-    *   Body (JSON): `{ "client_id": "string", "device_type": "string", "location": "string" }`
-    *   Respuesta Éxito (`201 Created` o `200 OK` si ya existe): `{ "success": true, "message": "Cliente registrado/actualizado", "client_id": "..." }`
+```json
+[
+  {
+    "client_id": "...",
+    "name": "...",
+    "description": "...",
+    "status": "online/offline",
+    "last_seen": "..."
+  },
+  ...
+]
+```
+</td>
+</tr>
+</table>
 
-*   **`GET /clients/<client_id>`**
-    *   Descripción: Obtiene los detalles de un cliente específico.
-    *   Path Params: `client_id` (string)
-    *   Respuesta Éxito (`200 OK`): `{ "client_id": "...", ... }`
-    *   Respuesta Error (`404 Not Found`): Si el cliente no existe.
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/clients</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Registra un nuevo cliente (nodo de cultivo).</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
 
-*   **`PUT /clients/<client_id>/status`**
-    *   Descripción: Actualiza el estado de conexión de un cliente (online/offline). Usado internamente por el sistema MQTT.
-    *   Path Params: `client_id` (string)
-    *   Body (JSON): `{ "status": "online" | "offline" }`
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Estado actualizado" }`
+```json
+{
+  "client_id": "string",
+  "name": "string",
+  "description": "string (opcional)"
+}
+```
+*Requiere `client_id` y `name`.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (201 Created)</strong></td>
+<td>
 
-*   **`PUT /clients/<client_id>/enable`**
-    *   Descripción: Habilita o deshabilita un cliente (afecta si se procesan sus datos o se controla).
-    *   Path Params: `client_id` (string)
-    *   Body (JSON): `{ "enabled": true | false }`
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Cliente habilitado/deshabilitado" }`
+```json
+{ "message": "Cliente registrado correctamente" }
+```
+</td>
+</tr>
+</table>
 
-*   **`PUT /clients/<client_id>`**
-    *   Descripción: Actualiza la información general de un cliente.
-    *   Path Params: `client_id` (string)
-    *   Body (JSON): `{ "device_type": "string", "location": "string" }`
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Información actualizada" }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene los detalles de un cliente específico.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`DELETE /clients/<client_id>`**
-    *   Descripción: Elimina un cliente y todos sus datos asociados (sensores, eventos, etc.). ¡Usar con precaución!
-    *   Path Params: `client_id` (string)
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Cliente eliminado" }`
+```json
+{
+  "client_id": "...",
+  "name": "...",
+  "description": "...",
+  "status": "...",
+  "last_seen": "..."
+}
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-### Sensores (`/sensors`)
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>PUT /api/clients/{client_id}/status</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Actualiza el estado de conexión de un cliente (online/offline). Actualiza `last_seen` al pasar a 'online'.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
 
-Gestiona los datos de los sensores y los parámetros ideales.
+```json
+{ "status": "online" | "offline" }
+```
+*Requiere `status`.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`GET /sensors/sht3x`**
-    *   Descripción: Obtiene datos históricos del sensor SHT3x.
-    *   Query Params (opcionales):
-        *   `client_id` (string): Filtra por cliente.
-        *   `start_time` (string, ISO 8601): Fecha/hora de inicio.
-        *   `end_time` (string, ISO 8601): Fecha/hora de fin.
-        *   `limit` (integer): Número máximo de registros.
-    *   Respuesta Éxito (`200 OK`): `[ { "timestamp": "...", "client_id": "...", "temperature": float, "humidity": float }, ... ]`
+```json
+{ "message": "Estado actualizado correctamente" }
+```
+</td>
+</tr>
+</table>
 
-*   **`GET /sensors/ideal_params/<client_id>`**
-    *   Descripción: Obtiene los parámetros ideales de temperatura y humedad para el control automático de un cliente.
-    *   Path Params: `client_id` (string)
-    *   Respuesta Éxito (`200 OK`): `{ "client_id": "...", "ideal_temp_min": float, "ideal_temp_max": float, "ideal_humidity_min": float, "ideal_humidity_max": float }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>PUT /api/clients/{client_id}/info</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Actualiza la información (nombre y descripción) de un cliente existente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
 
-*   **`POST /sensors/ideal_params/<client_id>`**
-    *   Descripción: Establece o actualiza los parámetros ideales para un cliente.
-    *   Path Params: `client_id` (string)
-    *   Body (JSON): `{ "ideal_temp_min": float, "ideal_temp_max": float, "ideal_humidity_min": float, "ideal_humidity_max": float }`
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Parámetros ideales actualizados" }`
+```json
+{
+  "name": "string",
+  "description": "string (opcional)"
+}
+```
+*Requiere `name`.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-### Eventos (`/events`)
+```json
+{ "message": "Informacion del cliente actualizada correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-Gestiona los eventos registrados por el sistema.
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>DELETE /api/clients/{client_id}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Elimina un cliente y todos sus datos asociados. ¡Usar con precaución!</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`GET /events`**
-    *   Descripción: Obtiene una lista de eventos del sistema.
-    *   Query Params (opcionales):
-        *   `client_id` (string)
-        *   `event_type` (string)
-        *   `start_time` (string, ISO 8601)
-        *   `end_time` (string, ISO 8601)
-        *   `limit` (integer)
-    *   Respuesta Éxito (`200 OK`): `[ { "id": integer, "timestamp": "...", "client_id": "...", "event_type": "...", "message": "...", "details": "..." }, ... ]`
+```json
+{ "message": "Cliente y todos sus datos eliminados correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-*   **`POST /events`**
-    *   Descripción: Guarda un nuevo evento (generalmente usado internamente).
-    *   Body (JSON): `{ "client_id": "string", "event_type": "string", "message": "string", "details": "json_string_o_null" }`
-    *   Respuesta Éxito (`201 Created`): `{ "success": true, "message": "Evento guardado", "event_id": integer }`
+### Sensores (`/clients/<client_id>/...`)
 
-*   **`GET /events/topic/<topic>`**
-    *   Descripción: Obtiene eventos filtrados por un tópico MQTT específico (puede ser menos útil que el GET general).
-    *   Path Params: `topic` (string)
-    *   Respuesta Éxito (`200 OK`): `[ { ...evento... }, ... ]`
+Gestiona los datos de los sensores y los parámetros ideales por cliente.
 
-*   **`PUT /events/<event_id>`**
-    *   Descripción: Actualiza un evento existente (uso limitado).
-    *   Path Params: `event_id` (integer)
-    *   Body (JSON): `{ "message": "string", "details": "json_string_o_null" }`
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Evento actualizado" }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/Sht3xSensor</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene datos históricos del sensor SHT3x para un cliente, con paginación.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`DELETE /events/<event_id>`**
-    *   Descripción: Elimina un evento específico.
-    *   Path Params: `event_id` (integer)
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Evento eliminado" }`
+```json
+[
+  {
+    "id": integer,
+    "client_id": "...",
+    "timestamp": "...",
+    "temperature": float,
+    "humidity": float
+  },
+  ...
+]
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-### Actuadores (`/actuators`)
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/Sht3xSensorManual</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene datos históricos del sensor SHT3x (propósito específico no claro, similar al anterior).</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-Gestiona el estado y control de los actuadores (luces, ventiladores, etc.).
+```json
+[ { "id": integer, ... }, ... ]
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-*   **`GET /actuators`**
-    *   Descripción: Obtiene el estado actual de todos los actuadores, opcionalmente filtrado por cliente.
-    *   Query Params (opcional): `client_id` (string)
-    *   Respuesta Éxito (`200 OK`): `[ { "client_id": "...", "name": "...", "type": "...", "state": ..., "last_changed": "..." }, ... ]`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/IdealParams/{param_type}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene los parámetros ideales (min/max) para un tipo específico (`temperature` o `humidity`) para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>• `client_id` (string)<br>• `param_type` (string: "temperature" | "humidity")</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`POST /actuators`**
-    *   Descripción: Guarda el estado inicial de un actuador (usado internamente).
-    *   Body (JSON): `{ "client_id": "string", "name": "string", "type": "string", "state": "string/int/bool" }`
-    *   Respuesta Éxito (`201 Created`): `{ "success": true, "message": "Estado inicial guardado" }`
+```json
+{
+  "id": integer,
+  "client_id": "...",
+  "param_type": "...",
+  "min_value": float,
+  "max_value": float
+}
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente o los parámetros no existen.</td>
+</tr>
+</table>
 
-*   **`GET /actuators/<name>`**
-    *   Descripción: Obtiene el estado de un actuador específico para un cliente dado.
-    *   Path Params: `name` (string, ej. "light1")
-    *   Query Params: `client_id` (string, **requerido**)
-    *   Respuesta Éxito (`200 OK`): `{ "client_id": "...", "name": "...", ... }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>PUT /api/clients/{client_id}/IdealParams/{param_type}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Establece o actualiza los parámetros ideales (min/max) para un tipo específico y cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>• `client_id` (string)<br>• `param_type` (string: "temperature" | "humidity")</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
 
-*   **`PUT /actuators/<name>`**
-    *   Descripción: Actualiza el estado de un actuador (usado internamente al recibir confirmación MQTT).
-    *   Path Params: `name` (string)
-    *   Body (JSON): `{ "client_id": "string", "state": ..., "last_changed": "ISO 8601 string" }`
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Estado actualizado" }`
+```json
+{
+  "min_value": float,
+  "max_value": float
+}
+```
+*Requiere ambos.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`POST /actuators/<name>/<action>`**
-    *   Descripción: Envía un comando manual a un actuador (ej. encender/apagar). Publica un mensaje MQTT.
-    *   Path Params:
-        *   `name` (string): Nombre del actuador (ej. "light1", "fan").
-        *   `action` (string): Acción a realizar (ej. "on", "off", "toggle").
-    *   Body (JSON): `{ "client_id": "string" }` (El ID del cliente al que pertenece el actuador)
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Comando enviado a MQTT", "topic": "...", "payload": "..." }`
-    *   Respuesta Error (`400 Bad Request`): Si el cliente o actuador no se encuentra, o la acción no es válida.
+```json
+{ "message": "Parametros ideales actualizados exitosamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-### Estado de la Aplicación (`/state`)
+### Eventos (`/clients/<client_id>/Event`)
 
-Gestiona configuraciones específicas por cliente, como el modo de control.
+Gestiona los eventos registrados por el sistema para un cliente.
 
-*   **`GET /state/<client_id>`**
-    *   Descripción: Obtiene el estado de la aplicación para un cliente (ej. modo 'auto' o 'manual').
-    *   Path Params: `client_id` (string)
-    *   Respuesta Éxito (`200 OK`): `{ "control_mode": "auto" | "manual", ...otros estados... }` (Devuelve un objeto con todos los pares clave-valor de estado para ese cliente)
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/Event</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene una lista paginada de eventos del sistema para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`POST /state/<client_id>`**
-    *   Descripción: Actualiza un valor de estado específico para un cliente.
-    *   Path Params: `client_id` (string)
-    *   Body (JSON): `{ "state_key": "string", "state_value": "any" }` (ej. `{ "state_key": "control_mode", "state_value": "manual" }`)
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Estado actualizado" }`
+```json
+[
+  {
+    "id": integer,
+    "client_id": "...",
+    "timestamp": "...",
+    "message": "...",
+    "topic": "..."
+  },
+  ...
+]
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
-### Estadísticas (`/statistics`)
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/clients/{client_id}/Event</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Guarda un nuevo evento para un cliente (generalmente usado internamente).</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
+
+```json
+{
+  "message": "string",
+  "topic": "string"
+}
+```
+*Requiere ambos.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (201 Created)</strong></td>
+<td>
+
+```json
+{ "message": "Evento guardado correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/Event/FilterByTopic</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene eventos para un cliente filtrados por tópico MQTT, con paginación.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>• `topic` (string, **requerido**)<br>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+[ { "id": integer, ... }, ... ]
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error</strong></td>
+<td>• 400 Bad Request: Si falta `topic`.<br>• 404 Not Found: Si el cliente no existe.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>DELETE /api/clients/{client_id}/Event/{id}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Elimina un evento específico por su ID numérico para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>• `client_id` (string)<br>• `id` (integer)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{ "message": "Evento eliminado correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error</strong></td>
+<td>• 404 Not Found: Si el cliente no existe.<br>• 500 Internal Server Error: Si el evento no existe o hay otro error.</td>
+</tr>
+</table>
+
+### Actuadores (`/clients/<client_id>/Actuator`)
+
+Gestiona el estado y control de los actuadores por cliente.
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/Actuator</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene el estado actual de todos los actuadores registrados para un cliente específico.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+[
+  {
+    "id": integer,
+    "client_id": "...",
+    "name": "...",
+    "state": ..., 
+    "last_changed": "..."
+  },
+  ...
+]
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/clients/{client_id}/Actuator</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Registra un nuevo actuador para un cliente con su estado inicial.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
+
+```json
+{
+  "name": "string",
+  "state": "string | integer | boolean"
+}
+```
+*Requiere ambos.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (201 Created)</strong></td>
+<td>
+
+```json
+{ "message": "Actuador agregado correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>PUT /api/clients/{client_id}/Actuator/{id}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Actualiza el estado de un actuador específico por su ID numérico para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>• `client_id` (string)<br>• `id` (integer)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
+
+```json
+{ "state": "string | integer | boolean" }
+```
+*Requiere `state`.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{ "message": "Estado del actuador actualizado correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/clients/{client_id}/Actuator/toggle_light</code><br>
+<code>POST /api/clients/{client_id}/Actuator/toggle_fan</code><br>
+<code>POST /api/clients/{client_id}/Actuator/toggle_humidifier</code><br>
+<code>POST /api/clients/{client_id}/Actuator/toggle_motor</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Envía un comando para cambiar el estado de un actuador específico (luz, ventilador, etc.) para un cliente. Publica un mensaje MQTT.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
+
+```json
+{ "state": "on" | "off" | boolean | number }
+```
+*Requiere `state`.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{ "message": "Senal enviada correctamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error</strong></td>
+<td>• 404 Not Found: Si el cliente no existe.<br>• 400 Bad Request: Si falta `state`.</td>
+</tr>
+</table>
+
+### Estado de la Aplicación (`/clients/<client_id>/...State`)
+
+Gestiona el modo de operación (automático/manual) por cliente.
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/getState</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene el modo de control actual para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{ "mode": "manual" | "automatico" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente o su estado no se encuentran.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>PUT /api/clients/{client_id}/updateState</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Actualiza el modo de control para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
+
+```json
+{ "mode": "manual" | "automatico" }
+```
+*Requiere `mode`.*
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{ "message": "Estado de la aplicacion actualizado exitosamente" }
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error</strong></td>
+<td>• 400 Bad Request: Si el modo es inválido.<br>• 404 Not Found: Si el cliente no existe.</td>
+</tr>
+</table>
+
+### Estadísticas (`/clients/<client_id>/statistics`)
 
 Proporciona estadísticas calculadas sobre los datos.
 
-*   **`GET /statistics/<client_id>`**
-    *   Descripción: Obtiene estadísticas agregadas (mín, máx, prom) de temperatura y humedad para un cliente durante un período.
-    *   Path Params: `client_id` (string)
-    *   Query Params (opcional): `period` (string, ej. "last_24h", "last_7d", "all_time", default="last_24h")
-    *   Respuesta Éxito (`200 OK`): `{ "client_id": "...", "period": "...", "temperature": { "min": float, "max": float, "avg": float }, "humidity": { "min": float, "max": float, "avg": float }, "record_count": integer }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/statistics/dashboard</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene estadísticas agregadas (min, max, prom) de T/H para un cliente durante los últimos 'N' días.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>`days` (integer, opcional, default=7)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{
+  "sht3x_stats": {
+    "client_id": "...",
+    "period_days": integer,
+    "temperature": { "min": float | null, "max": float | null, "avg": float | null },
+    "humidity": { "min": float | null, "max": float | null, "avg": float | null },
+    "record_count": integer
+  }
+}
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Error (404 Not Found)</strong></td>
+<td>Si el cliente no existe.</td>
+</tr>
+</table>
 
 ---
 
-## Endpoints MSAD (Microservicio de Almacenamiento y Datos)
+## Endpoints MSAD (Módulo de Almacenamiento y Datos)
 
-Estos endpoints gestionan los backups, reportes y datos de prueba del sistema.
+Estos endpoints gestionan los backups y reportes del sistema. (Para detalles de respuesta, ver `MSAD_DETAILS.md`).
 
 ### MSAD - Estado (`/msad/status`)
 
-*   **`GET /api/msad/status`**
-    *   Descripción: Verifica que el módulo MSAD integrado esté activo.
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "service": "msad", "version": "1.0.0-minimal", "status": "running" }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/msad/status</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Verifica que el módulo MSAD integrado esté activo.</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-### MSAD - Datos de Prueba (`/msad/test-data`)
-
-*   **`POST /api/msad/test-data`**
-    *   Descripción: Inserta datos de sensores SHT3x aleatorios en la base de datos para facilitar las pruebas de reportes.
-    *   Body (JSON):
-        *   `client_id` (string, opcional, default="mushroom1"): ID del cliente para el que se generan los datos.
-        *   `count` (integer, opcional, default=10): Número de registros de prueba a insertar.
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Se insertaron <count> registros de prueba para el cliente <client_id>", "count": <count> }`
+```json
+{
+  "success": true,
+  "service": "msad",
+  "version": "1.1.0", /* Puede variar */
+  "status": "running"
+}
+```
+</td>
+</tr>
+</table>
 
 ### MSAD - Backups (`/msad/backups`)
 
-*   **`GET /api/msad/backups`**
-    *   Descripción: Lista todos los archivos de backup disponibles.
-    *   Query Params (opcional): `type` (string, "manual" | "auto") para filtrar por tipo de backup.
-    *   Respuesta Éxito (`200 OK`):
-        ```json
-        {
-          "success": true,
-          "backups": [
-            {
-              "backup_id": "backup_YYYYMMDD_HHMMSS",
-              "filename": "sensor_data_type_YYYYMMDD_HHMMSS.db",
-              "type": "manual" | "auto",
-              "size": integer, // en bytes
-              "created_at": "ISO 8601 timestamp",
-              "download_url": "/api/msad/backups/download/<filename>"
-            }
-            // ... más backups
-          ],
-          "total": integer // número total de backups listados
-        }
-        ```
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/msad/backups</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Lista todos los archivos de backup disponibles.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>`type` (string, opcional: "manual" | "auto")</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Objeto JSON con lista de backups (ver `MSAD_DETAILS.md`).</td>
+</tr>
+</table>
 
-*   **`POST /api/msad/backups/create`**
-    *   Descripción: Dispara la creación de un backup manual inmediato de la base de datos principal (`sensor_data.db`).
-    *   Respuesta Éxito (`200 OK`):
-        ```json
-        {
-          "success": true,
-          "backup_id": "backup_YYYYMMDD_HHMMSS",
-          "filename": "sensor_data_manual_YYYYMMDD_HHMMSS.db",
-          "path": "/ruta/completa/al/backup/....db", // Ruta en el servidor
-          "size": integer, // en bytes
-          "type": "manual",
-          "created_at": "ISO 8601 timestamp",
-          "download_url": "/api/msad/backups/download/<filename>"
-        }
-        ```
-    *   Respuesta Error (`400 Bad Request`, `500 Internal Server Error`): Si falla la creación.
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/msad/backups/create</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Crea un backup manual inmediato de `sensor_data.db`.</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Objeto JSON con detalles del backup creado (ver `MSAD_DETAILS.md`).</td>
+</tr>
+</table>
 
-*   **`GET /api/msad/backups/download/<filename>`**
-    *   Descripción: Descarga el archivo de backup (`.db`) especificado.
-    *   Path Params: `filename` (string)
-    *   Respuesta Éxito (`200 OK`): El archivo binario de la base de datos como descarga (`Content-Type: application/octet-stream`).
-    *   Respuesta Error (`404 Not Found`): `{ "success": false, "error": "Archivo de backup no encontrado" }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/msad/backups/download/{filename}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Descarga el archivo de backup (`.db`) especificado.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`filename` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Archivo binario (`Content-Type: application/octet-stream`).</td>
+</tr>
+</table>
 
-*   **`DELETE /api/msad/backups/<filename>`**
-    *   Descripción: Elimina un archivo de backup específico.
-    *   Path Params: `filename` (string)
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Backup <filename> eliminado correctamente" }`
-    *   Respuesta Error (`404 Not Found`): Si el archivo no existe.
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>DELETE /api/msad/backups/{filename}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Elimina un archivo de backup específico.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`filename` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`POST /api/msad/backups/restore/<filename>`**
-    *   Descripción: Restaura la base de datos principal (`sensor_data.db`) usando el archivo de backup especificado. **¡Sobrescribe la BD actual!** Puede requerir reinicio del servidor.
-    *   Path Params: `filename` (string)
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Backup <filename> restaurado correctamente", "safety_backup": "<nombre_backup_seguridad.db>" }` (Se crea un backup de seguridad de la BD actual antes de restaurar).
-    *   Respuesta Error (`404 Not Found`, `400 Bad Request`, `500 Internal Server Error`): Si el archivo no existe o falla la restauración.
+```json
+{ "success": true, "message": "Backup <filename> eliminado correctamente" }
+```
+</td>
+</tr>
+</table>
 
-*   **`GET /api/msad/backups/scheduler`**
-    *   Descripción: Obtiene el estado actual del planificador de backups automáticos.
-    *   Respuesta Éxito (`200 OK`):
-        ```json
-        {
-          "success": true,
-          "is_running": true | false,
-          "backup_count": integer, // backups existentes
-          "total_size": integer, // tamaño total en bytes
-          "formatted_size": "string", // ej. "2.44 MB"
-          "last_backup": "ISO 8601 timestamp" | null,
-          "next_backup": "ISO 8601 timestamp" | null,
-          "backup_dir": "/ruta/al/directorio/de/backups"
-        }
-        ```
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/msad/backups/restore/{filename}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Restaura `sensor_data.db` desde un backup. **¡Sobrescribe BD actual!**</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`filename` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
 
-*   **`POST /api/msad/backups/scheduler`**
-    *   Descripción: Configura (habilita/deshabilita o cambia intervalo) el planificador de backups automáticos.
-    *   Body (JSON, opcional):
-        *   `enabled` (boolean, opcional, default=true): Activa/desactiva el planificador.
-        *   `interval_hours` (integer, opcional, default=24): Intervalo entre backups automáticos.
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Planificador actualizado/iniciado/detenido", "status": { ... estado actual del scheduler ... } }` (El objeto status es igual al de GET /scheduler).
+```json
+{
+  "success": true,
+  "message": "Backup <filename> restaurado correctamente",
+  "safety_backup": "<nombre_backup_seguridad.db>"
+}
+```
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/msad/backups/scheduler</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Obtiene el estado del planificador de backups automáticos.</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Objeto JSON con estado del scheduler (ver `MSAD_DETAILS.md`).</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/msad/backups/scheduler</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Configura el planificador de backups automáticos.</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON, opcional)</strong></td>
+<td>
+
+```json
+{
+  "enabled": boolean,
+  "interval_hours": integer
+}
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{
+  "success": true,
+  "message": "...",
+  "status": { ... estado actual ... }
+}
+```
+</td>
+</tr>
+</table>
 
 ### MSAD - Reportes (`/clients/<client_id>/msad/reports`, `/msad/reports`)
 
-*   **`POST /api/clients/<client_id>/msad/reports`**
-    *   Descripción: Genera un reporte de datos históricos para un cliente específico.
-    *   Path Params: `client_id` (string)
-    *   Body (JSON):
-        *   `start_date` (string, "YYYY-MM-DD"): Fecha de inicio (requerida).
-        *   `end_date` (string, "YYYY-MM-DD"): Fecha de fin (requerida).
-        *   `data_type` (string, opcional, default="sensors"): Tipo de datos ("sensors", "events", "actuators"). Ver tabla en [MSAD_DETAILS.md](MSAD_DETAILS.md).
-        *   `format` (string, opcional, default="json"): Formato del reporte ("json" | "csv"). Ver tabla en [MSAD_DETAILS.md](MSAD_DETAILS.md).
-    *   Respuesta Éxito (`200 OK`):
-        ```json
-        {
-          "success": true,
-          "client_id": "<client_id>",
-          "report_id": "report_YYYYMMDD_HHMMSS",
-          "filename": "<client_id>_<data_type>_<start>_to_<end>_<timestamp>.<format>",
-          "format": "json" | "csv",
-          "data_type": "sensors" | "events" | "actuators",
-          "period": { "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" },
-          "size": integer, // tamaño en bytes
-          "records": integer, // número de registros en el reporte
-          "created_at": "ISO 8601 timestamp",
-          "download_url": "/api/clients/<client_id>/msad/reports/download/<filename>"
-        }
-        ```
-    *   Respuesta Error (`400 Bad Request`): `{ "success": false, "error": "Parámetros inválidos o no se encontraron datos" }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>POST /api/clients/{client_id}/msad/reports</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Genera un reporte de datos históricos para un cliente.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Cuerpo (JSON)</strong></td>
+<td>
 
-*   **`GET /api/clients/<client_id>/msad/reports`**
-    *   Descripción: Lista los reportes generados disponibles para un cliente específico.
-    *   Path Params: `client_id` (string)
-    *   Query Params (opcionales): `format` (string), `data_type` (string) para filtrar.
-    *   Respuesta Éxito (`200 OK`):
-        ```json
-        {
-          "success": true,
-          "reports": [
-            {
-              "report_id": "report_YYYYMMDD_HHMMSS",
-              "client_id": "<client_id>",
-              "filename": "...",
-              "format": "...",
-              "data_type": "...",
-              "size": integer,
-              "created_at": "ISO 8601 timestamp",
-              "download_url": "/api/clients/<client_id>/msad/reports/download/<filename>"
-            }
-            // ... más reportes
-          ],
-          "total": integer
-        }
-        ```
+```json
+{
+  "start_date": "YYYY-MM-DD", /* Requerido */
+  "end_date": "YYYY-MM-DD",   /* Requerido */
+  "data_type": "sensors" | "events" | "actuators", /* Opcional */
+  "format": "json" | "csv"  /* Opcional */
+}
+```
+</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Objeto JSON con metadatos del reporte (ver `MSAD_DETAILS.md`).</td>
+</tr>
+</table>
 
-*   **`GET /api/msad/reports`**
-    *   Descripción: Lista todos los reportes generados para **todos** los clientes.
-    *   Query Params (opcionales): `format` (string), `data_type` (string) para filtrar.
-    *   Respuesta Éxito (`200 OK`): Igual estructura que el endpoint anterior, pero con reportes de múltiples `client_id`.
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/msad/reports</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Lista los reportes generados para un cliente específico.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>`client_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>• `format` (string, opcional)<br>• `data_type` (string, opcional)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Objeto JSON con lista de reportes (ver `MSAD_DETAILS.md`).</td>
+</tr>
+</table>
 
-*   **`GET /api/clients/<client_id>/msad/reports/download/<filename>`**
-    *   Descripción: Descarga un archivo de reporte generado específico.
-    *   Path Params: `client_id` (string), `filename` (string)
-    *   Respuesta Éxito (`200 OK`): El archivo de reporte (JSON o CSV) como descarga (`Content-Type: application/json` o `text/csv`).
-    *   Respuesta Error (`404 Not Found`): `{ "success": false, "error": "Archivo no encontrado" }`
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/msad/reports</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Lista todos los reportes generados para todos los clientes.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Query</strong></td>
+<td>• `format` (string, opcional)<br>• `data_type` (string, opcional)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Objeto JSON con lista de reportes (igual estructura que el anterior).</td>
+</tr>
+</table>
 
-*   **`DELETE /api/clients/<client_id>/msad/reports/<report_id>`**
-    *   Descripción: Elimina un archivo de reporte específico. **Nota:** Usa el `report_id` devuelto al crear/listar el reporte (ej. `report_YYYYMMDD_HHMMSS`). Internamente busca el archivo asociado a ese ID.
-    *   Path Params: `client_id` (string), `report_id` (string).
-    *   Respuesta Éxito (`200 OK`): `{ "success": true, "message": "Reporte eliminado", "report_id": "...", "filename": "...", "client_id": "..." }`
-    *   Respuesta Error (`404 Not Found`): Si el reporte/archivo no existe. 
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>GET /api/clients/{client_id}/msad/reports/download/{filename}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Descarga un archivo de reporte generado específico.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>• `client_id` (string)<br>• `filename` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>Archivo JSON o CSV (`Content-Type: application/json` o `text/csv`).</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td><code>DELETE /api/clients/{client_id}/msad/reports/{report_id}</code></td>
+</tr>
+<tr>
+<td><strong>Descripción</strong></td>
+<td>Elimina un archivo de reporte específico usando el `report_id`.</td>
+</tr>
+<tr>
+<td><strong>Parámetros Path</strong></td>
+<td>• `client_id` (string)<br>• `report_id` (string)</td>
+</tr>
+<tr>
+<td><strong>Respuesta Éxito (200 OK)</strong></td>
+<td>
+
+```json
+{
+  "success": true,
+  "message": "Reporte eliminado",
+  "report_id": "...",
+  "filename": "...",
+  "client_id": "..."
+}
+```
+</td>
+</tr>
+</table> 
