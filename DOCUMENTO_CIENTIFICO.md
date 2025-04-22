@@ -159,7 +159,76 @@ La solución desarrollada implementa una **arquitectura cliente-servidor distrib
 
 Esta solución ofrece un sistema **distribuido y centralizado**, utilizando hardware accesible y protocolos estándar para cumplir los objetivos de monitoreo, control, visualización y gestión de datos para múltiples cultivos de Orellana Rosada, con énfasis en la fiabilidad aportada por el módulo MSAD.
 
-## 7. Bibliografía
+## 7. METODOLOGÍA PROPUESTA
+
+La metodología propuesta se orienta a garantizar el desarrollo eficiente y funcional de la red de monitoreo y control ambiental para el cultivo de setas Orellana Rosada. Este enfoque se centra en la implementación de una arquitectura distribuida que optimice las condiciones ambientales, priorizando estrategias prácticas y aplicables en entornos controlados.
+
+### 7.1 Enfoque Metodológico
+
+El enfoque del proyecto es experimental y aplicado, basado en una arquitectura cliente-servidor distribuida. Este modelo permite el desarrollo de un sistema que monitorea y controla automáticamente variables críticas como temperatura y humedad en múltiples cultivos, con el objetivo de mejorar la productividad y facilitar la gestión centralizada.
+
+### 7.2 Procedimientos y Estrategias
+
+1.  **Diseño e Implementación del Sistema**
+    *   Configuración de Raspberry Pi clientes con sensores **SHT3x** mediante conexión I2C.
+    *   Implementación del servidor central en Raspberry Pi con broker MQTT y servidor web Flask.
+    *   Integración de actuadores (ventiladores, humidificadores, LEDs) mediante control GPIO.
+    *   Desarrollo de software cliente para gestión de sensores y actuadores.
+    *   Implementación de la comunicación MQTT entre clientes y servidor.
+
+2.  **Desarrollo de la Interfaz Web**
+    *   Creación del frontend en Angular con visualización en tiempo real.
+    *   Implementación del backend en Flask con API REST.
+    *   Integración con el broker MQTT para datos en tiempo real.
+    *   Desarrollo de paneles de control y monitoreo por cultivo.
+
+3.  **Pruebas de Operación**
+    *   Validación de la comunicación entre clientes y servidor.
+    *   Pruebas de lectura de sensores y control de actuadores.
+    *   Verificación del sistema de monitoreo en tiempo real.
+    *   Comprobación de la gestión multi-cultivo.
+    *   Pruebas de respuesta automática ante cambios ambientales.
+
+4.  **Optimización del Sistema**
+    *   Ajuste de parámetros de control ambiental.
+    *   Optimización del rendimiento de la red.
+    *   Mejora de la experiencia de usuario en la interfaz web.
+    *   Refinamiento de la lógica de control automático.
+
+5.  **Documentación Técnica**
+    *   Manual de instalación y configuración de nodos cliente.
+    *   Documentación de la arquitectura del sistema.
+    *   Guía de operación del sistema de monitoreo.
+    *   Registro de configuraciones y procedimientos.
+
+### 7.3 Recursos Requeridos
+
+**Recursos Materiales por Nodo Cliente:**
+*   Raspberry Pi 3B+ (o compatible)
+*   Sensor **SHT3x** (temperatura y humedad)
+*   Ventilador 12V DC (control de temperatura/aire)
+*   Humidificador 5V (control de humedad)
+*   Sistema de iluminación LED
+*   Cables y componentes de conexión (relés, drivers si aplica)
+
+**Recursos Materiales para Servidor:**
+*   Raspberry Pi 3B+ (o superior)
+*   Tarjeta SD de alta capacidad
+*   Adaptador de corriente
+*   Cables de red (si aplica)
+
+**Recursos de Software:**
+*   Raspberry Pi OS
+*   Python 3
+*   Flask Framework
+*   Angular CLI
+*   Mosquitto MQTT Broker
+*   SQLite
+*   Librerías Python: `paho-mqtt`, `Flask-Cors`, `aiosqlite`, `numpy`, `schedule`, etc.
+
+Esta metodología está diseñada para ser práctica y eficiente, enfocándose en la implementación de una arquitectura distribuida que permita el monitoreo y control centralizado de múltiples cultivos de setas Orellana Rosada. El resultado final será un sistema funcional y documentado que facilite su replicación y mantenimiento.
+
+## 8. Bibliografía
 
 [1] M. A. R. Sarkar et al., "Smart Agriculture Using IoT and Machine Learning: A Comprehensive Review," IEEE Access, vol. 9, pp. 140067–140103, 2021.
 
