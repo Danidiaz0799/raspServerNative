@@ -1,290 +1,365 @@
 # 🍄 RaspServer: Sistema de Control Ambiental para Cultivo de Hongos
 
-![Versión](https://img.shields.io/badge/versión-1.0.0-blue) <!-- Ajustar si necesario -->
+![Versión](https://img.shields.io/badge/versión-1.1.0-blue)
 ![Estado](https://img.shields.io/badge/estado-activo-green)
-![Licencia](https://img.shields.io/badge/licencia-MIT-orange) <!-- Verificar licencia real -->
+![Python](https://img.shields.io/badge/python-3.x-blue.svg)
+![Flask](https://img.shields.io/badge/flask-2.x-important)
+![MQTT](https://img.shields.io/badge/mqtt-paho--mqtt-orange)
+![Database](https://img.shields.io/badge/database-SQLite-lightgrey)
 
 ## 📋 Contenido
-- [Descripción](#descripción)
-- [Arquitectura](#arquitectura)
-- [Sistema Electrónico](#sistema-electrónico)
-- [Cultivo de Orellana Rosada](#cultivo-de-orellana-rosada)
-- [Módulo MSAD (Microservicio de Almacenamiento y Datos)](#módulo-msad-microservicio-de-almacenamiento-y-datos)
-- [Pila Tecnológica](#pila-tecnológica)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Instalación y Configuración](#instalación-y-configuración)
-- [Ejecutar la Aplicación](#ejecutar-la-aplicación)
-- [Comunicación MQTT](#comunicación-mqtt)
-- [Documentación de la API](#documentación-de-la-api)
-- [Documentación Detallada de MSAD](#documentación-detallada-de-msad)
-- [Módulos Clave](#módulos-clave)
-- [Resolución de Problemas](#resolución-de-problemas)
-- [Actualización del Sistema](#actualización-del-sistema)
-- [Soporte](#soporte)
+
+- [Descripción](#-descripción)
+- [Características Principales](#-características-principales)
+- [Arquitectura](#️-arquitectura)
+- [Pila Tecnológica](#️-pila-tecnológica)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Esquema de la Base de Datos](#-esquema-de-la-base-de-datos)
+- [Comunicación MQTT](#-comunicación-mqtt)
+- [Instalación y Configuración](#️-instalación-y-configuración)
+- [Ejecutar la Aplicación](#️-ejecutar-la-aplicación)
+- [Documentación Adicional](#-documentación-adicional)
+- [Módulos Clave](#-módulos-clave)
+- [Resolución de Problemas](#-resolución-de-problemas)
+- [Soporte](#-soporte)
 
 ## 📝 Descripción
 
-RaspServer automatiza y monitorea las condiciones ambientales óptimas para el cultivo de hongos, utilizando una Raspberry Pi como servidor central. Interactúa con clientes MQTT (que pueden ser otras Raspberry Pi, ESP32, u otros microcontroladores) para recibir datos de sensores y controlar actuadores. Incluye una interfaz web (Angular) y un **módulo integrado MSAD** para gestión avanzada de datos.
+**RaspServer** es una aplicación backend basada en Flask diseñada para automatizar y monitorear las condiciones ambientales óptimas para el cultivo de hongos (u otros entornos controlados). Utiliza una Raspberry Pi (o similar) como servidor central, interactuando con dispositivos cliente (nodos) a través del protocolo MQTT para recopilar datos de sensores (temperatura, humedad) y controlar actuadores (luces, ventiladores, humidificadores, motores).
 
-**Objetivos:**
-- Ser energéticamente eficiente.
+El sistema incluye una API RESTful para la gestión de clientes, datos, eventos y configuración, así como un módulo integrado llamado **MSAD (Microservicio de Almacenamiento y Datos)** para funciones avanzadas de copia de seguridad y generación de reportes. El frontend se sirve como una aplicación Angular separada (no incluida en este repositorio backend, pero servida por él).
+
+**Objetivo:** Proporcionar un sistema robusto, eficiente y fácil de gestionar para el control ambiental automatizado.
+
+## ✨ Características Principales
+
+*   **Monitoreo de Sensores:** Recibe y almacena datos de sensores (SHT3x para temperatura y humedad) enviados por clientes MQTT.
+*   **Control de Actuadores:**
+    *   **Manual:** Permite controlar actuadores (Iluminación, Ventilación, Humidificador, Motor) individualmente a través de la API.
+    *   **Automático:** Ajusta automáticamente el estado de los actuadores según los parámetros ideales configurados (temperatura y humedad) cuando el sistema está en modo 'automatico'.
+*   **Gestión de Clientes:** Registra, lista, actualiza el estado (online/offline) y elimina clientes MQTT.
+*   **Registro de Eventos:** Guarda eventos importantes del sistema (advertencias de sensores fuera de rango, acciones de actuadores, etc.) para auditoría y seguimiento.
+*   **Estadísticas:** Provee endpoints para obtener estadísticas básicas sobre los datos recolectados.
+*   **Modo de Operación:** Permite cambiar el modo de funcionamiento del sistema entre 'manual' y 'automatico' por cliente.
+*   **Parámetros Ideales:** Configura los rangos de temperatura y humedad deseados por cliente para el modo automático.
+*   **Interfaz Web:** Sirve una aplicación frontend (Angular) para la interacción del usuario (el build de Angular debe colocarse en la ruta especificada).
+*   **Módulo MSAD Integrado:**
+    *   **Backups:** Creación manual y automática (programable) de backups de la base de datos SQLite (`sensor_data.db`). Permite listar, descargar, restaurar y eliminar backups.
+    *   **Reportes:** Generación de reportes de datos históricos (sensores, eventos) en formatos JSON o CSV, filtrados por cliente, rango de fechas y tipo de dato. Permite listar y descargar reportes.
 
 ## 🏗️ Arquitectura
 
-**Flujo de datos:**
-6.  El **módulo MSAD integrado** realiza backups periódicos de la base de datos y permite generar/descargar reportes de datos históricos vía API.
+El sistema sigue una arquitectura cliente-servidor distribuida:
 
-## 🔌 Sistema Electrónico
+1.  **Servidor Central (RaspServer - Flask):**
+    *   Ejecuta la aplicación Flask (`app.py`).
+    *   Se conecta a un broker MQTT (local o remoto).
+    *   Se suscribe a tópicos MQTT para recibir datos de los nodos cliente.
+    *   Procesa los mensajes recibidos:
+        *   Guarda datos de sensores en la base de datos SQLite (`database.py`, `models/`).
+        *   Registra eventos (`models/event.py`).
+        *   Actualiza el estado de los clientes (`models/client.py`).
+        *   En modo automático, evalúa los datos y publica comandos MQTT a los actuadores de los nodos (`mqtt_client.py`).
+    *   Expone una API RESTful (`routes/`) para interactuar con el frontend y otros sistemas.
+    *   Sirve los archivos estáticos de la aplicación frontend Angular.
+    *   Gestiona el módulo MSAD para backups y reportes (`msad/`).
+2.  **Broker MQTT (Ej: Mosquitto):** Actúa como intermediario para toda la comunicación entre el servidor y los nodos cliente.
+3.  **Nodos Cliente (Ej: Raspberry Pi, ESP32):**
+    *   Dispositivos con sensores y/o actuadores conectados.
+    *   Ejecutan código (no incluido en este repo) que:
+        *   Lee datos de sensores.
+        *   Publica los datos en tópicos MQTT específicos del servidor.
+        *   Se suscribe a tópicos MQTT para recibir comandos del servidor.
+        *   Actúa sobre los actuadores según los comandos recibidos.
+        *   Opcionalmente, publica su estado (registro, heartbeat).
+4.  **Base de Datos (SQLite):** Almacena todos los datos persistentes: clientes, datos de sensores, eventos, estados de actuadores, parámetros ideales, estado de la aplicación.
+5.  **Frontend (Angular):** Aplicación web que interactúa con la API RESTful del servidor Flask para visualizar datos y controlar el sistema.
 
-## 🍄 Cultivo de Orellana Rosada (*Pleurotus djamor*)
+## 🛠️ Pila Tecnológica
 
-## 📊 Módulo MSAD (Microservicio de Almacenamiento y Datos)
-
-RaspServer integra el módulo MSAD, diseñado para la gestión eficiente de los datos generados por el sistema de cultivo.
-
-**Capacidades Principales:**
-*   **Backups:** Realiza copias de seguridad automáticas (programables) y manuales de la base de datos principal (`sensor_data.db`). Permite listar, descargar, restaurar y eliminar estos backups a través de la API.
-*   **Reportes:** Genera reportes de datos históricos (sensores, eventos, actuadores) en formatos JSON o CSV, filtrados por cliente, rango de fechas y tipo de dato. Permite listar y descargar los reportes generados.
-
-Para una descripción detallada de la arquitectura interna, funcionalidades completas, configuración avanzada y solución de problemas específicos de MSAD, consulta el documento:
-**[MSAD_DETAILS.md](MSAD_DETAILS.md)**
-
-## ��️ Pila Tecnológica
+*   **Backend:** Python 3, Flask
+*   **Comunicación:** MQTT (Paho-MQTT)
+*   **Base de Datos:** SQLite (con `aiosqlite` para operaciones asíncronas)
+*   **Asincronía:** `asyncio` (usado en modelos y cliente MQTT)
+*   **Frontend (Servido por Flask):** Angular (requiere build separado)
+*   **Broker MQTT:** Mosquitto (recomendado)
 
 ## 📁 Estructura del Proyecto
 
 ```
 .
 ├── app.py                  # Punto de entrada principal de la aplicación Flask
-├── database.py             # Lógica de creación de tablas de la base de datos
-├── mqtt_client.py          # Cliente MQTT para comunicación con dispositivos y control
-├── sensor_data.db          # Archivo de la base de datos SQLite (ignorado por Git)
-├── requirements.txt        # Dependencias de Python para el servidor
-├── README.md               # Este archivo
-├── API_DOCUMENTATION.md    # Documentación detallada de la API RESTful
-├── MSAD_DETAILS.md         # Documentación detallada del módulo MSAD
+├── database.py             # Lógica de creación e inicialización de la BD SQLite
+├── mqtt_client.py          # Cliente MQTT: conexión, suscripción, manejo de mensajes, lógica automática
+├── sensor_data.db          # Archivo de la base de datos SQLite (creado al iniciar, ignorado por Git)
+├── requirements.txt        # Dependencias Python del backend
+├── docs/                   # Documentación del proyecto
+│   ├── README.md           # Este archivo
+│   ├── API_DOCUMENTATION.md # Documentación detallada de la API RESTful
+│   ├── MSAD_DETAILS.md     # Documentación detallada del módulo MSAD
+│   └── ...
+├── models/                 # Módulos con lógica de acceso a datos (interacción con BD)
+│   ├── __init__.py
+│   ├── actuator.py         # Modelo para Actuadores
+│   ├── app_state.py        # Modelo para Estado de la Aplicación (manual/auto)
+│   ├── client.py           # Modelo para Clientes MQTT
+│   ├── event.py            # Modelo para Eventos
+│   ├── sensor_data.py      # Modelo para Datos de Sensores y Parámetros Ideales
+│   └── statistics.py       # Modelo para Estadísticas
+├── routes/                 # Blueprints Flask para las rutas de la API principal
+│   ├── __init__.py
+│   ├── actuator_routes.py
+│   ├── app_state_routes.py
+│   ├── client_routes.py
+│   ├── event_routes.py
+│   ├── sensor_routes.py
+│   └── statistics_routes.py
+├── msad/                   # Módulo MSAD (Microservicio de Almacenamiento y Datos)
+│   ├── __init__.py         # Inicialización, funciones públicas y registro de blueprints MSAD
+│   ├── api/                # Blueprints y lógica de las rutas API específicas de MSAD
+│   │   ├── __init__.py
+│   │   ├── backup_routes.py # Endpoints para gestión de Backups
+│   │   ├── report_routes.py # Endpoints para gestión de Reportes
+│   │   └── system_routes.py # Endpoints de estado de MSAD
+│   ├── config/             # Configuración interna de MSAD (ej: backup_config.json)
+│   │   └── ...
+│   ├── core/               # Lógica principal de MSAD (backup, reportes, sistema)
+│   │   ├── __init__.py
+│   │   ├── backup.py       # Funcionalidad de Backup/Restore
+│   │   ├── reports.py      # Funcionalidad de Generación de Reportes
+│   │   └── system.py       # Utilidades del sistema MSAD (logs, etc.)
+│   └── server/             # (Potencialmente para ejecución independiente, verificar uso actual)
 ├── .gitignore              # Archivos y carpetas ignorados por Git
-├── angular_app/            # Código fuente y build de la aplicación Angular
-│   ├── dist/               # Carpeta de build de Angular (servida por Flask, ignorada por Git)
-│   └── ...                 # Otros archivos de Angular (package.json, src/, etc.)
-├── models/                 # Módulos para interactuar con la base de datos (tablas)
-│   ├── ... (actuator.py, client.py, etc.)
-├── routes/                 # Blueprints de Flask para las rutas principales de la API
-│   ├── ... (actuator_routes.py, client_routes.py, etc.)
-├── msad/                   # Módulo del Microservicio de Almacenamiento Distribuido
-│   ├── __init__.py         # Inicialización y registro de blueprints MSAD
-│   ├── api/                # Blueprints y lógica de las rutas API de MSAD
-│   │   ├── backup_routes.py, report_routes.py, system_routes.py
-│   ├── config/             # Configuración de MSAD
-│   └── core/               # Lógica principal de MSAD (backup, reportes, sistema)
-└── __pycache__/            # Archivos de caché de Python (ignorados por Git)
+└── venv/                   # Entorno virtual Python (ignorado por Git)
 ```
-*(Nota: La existencia de código específico para nodos debe verificarse en el repositorio real)*
+*(Nota: La ruta `ANGULAR_BUILD_FOLDER` en `app.py` debe apuntar a la carpeta `dist/` del build de Angular)*
+
+## 💾 Esquema de la Base de Datos
+
+La base de datos SQLite (`sensor_data.db`) contiene las siguientes tablas principales:
+
+*   `clients`: Información sobre los dispositivos cliente registrados (ID, nombre, estado, etc.).
+    *   `client_id` (TEXT, UNIQUE)
+    *   `name` (TEXT)
+    *   `description` (TEXT)
+    *   `last_seen` (TEXT)
+    *   `status` (TEXT: 'online', 'offline')
+    *   `created_at` (TEXT)
+    *   `manually_disabled` (INTEGER)
+*   `sht3x_data`: Datos históricos de temperatura y humedad del sensor SHT3x.
+    *   `client_id` (TEXT)
+    *   `timestamp` (TEXT)
+    *   `temperature` (REAL)
+    *   `humidity` (REAL)
+*   `events`: Registro de eventos importantes del sistema.
+    *   `client_id` (TEXT)
+    *   `message` (TEXT)
+    *   `timestamp` (TEXT)
+    *   `topic` (TEXT: 'temperatura', 'humedad', 'actuador', 'sistema', etc.)
+*   `actuators`: Estado actual de los actuadores registrados por cliente.
+    *   `client_id` (TEXT)
+    *   `name` (TEXT: 'Iluminacion', 'Ventilacion', 'Humidificador', 'Motor')
+    *   `state` (BOOLEAN)
+    *   `timestamp` (TEXT)
+*   `ideal_params`: Parámetros ideales (mínimo y máximo) para sensores, usados en modo automático.
+    *   `client_id` (TEXT)
+    *   `param_type` (TEXT: 'temperatura', 'humedad')
+    *   `min_value` (REAL)
+    *   `max_value` (REAL)
+    *   `timestamp` (TEXT)
+*   `app_state`: Modo de operación actual ('manual' o 'automatico') por cliente.
+    *   `client_id` (TEXT)
+    *   `mode` (TEXT)
+    *   `timestamp` (TEXT)
+
+*(Consulte `database.py` para la definición exacta y valores predeterminados)*
+
+## 📡 Comunicación MQTT
+
+La comunicación se basa en tópicos MQTT estructurados. Los nodos cliente deben publicar y suscribirse a los tópicos correctos.
+
+*   **Tópicos a los que se suscribe el Servidor (Nodos publican aquí):**
+    *   Datos Sensor SHT3x: `clients/<client_id>/sensor/sht3x`
+        *   Payload: `"<temperatura>,<humedad>"` (Ej: `"25.5,85.2"`)
+    *   Registro de Cliente: `clients/<client_id>/register`
+        *   Payload: `"<nombre>,<descripcion>"` (Ej: `"NodoIncubadora1,RPi con SHT3x"`)
+    *   *Otros tópicos posibles (ej: heartbeat, estado actuador) podrían implementarse en los nodos.*
+*   **Tópicos en los que publica el Servidor (Nodos se suscriben aquí):**
+    *   Control Luz: `clients/<client_id>/light`
+        *   Payload: `"true"` / `"false"`
+    *   Control Ventilador: `clients/<client_id>/fan`
+        *   Payload: `"true"` / `"false"`
+    *   Control Humidificador: `clients/<client_id>/humidifier`
+        *   Payload: `"true"` / `"false"`
+    *   Control Motor: `clients/<client_id>/motor`
+        *   Payload: `"true"` / `"false"`
+
+*(Donde `<client_id>` es el identificador único del nodo cliente)*
 
 ## ⚙️ Instalación y Configuración
 
 ### Requisitos Previos
-*   Hardware ensamblado (Servidor RPi, Nodos, Sensores, Actuadores, Fuentes de alimentación).
-*   Sistema Operativo instalado en la Raspberry Pi del servidor (Raspberry Pi OS Lite 64-bit recomendado).
-*   Conexión de red configurada para el servidor y los nodos.
-*   Broker MQTT instalado y funcionando (Mosquitto recomendado).
 
-### 1. Preparación de la Raspberry Pi (Servidor y Nodos si son RPi)
+*   Hardware: Raspberry Pi (o similar) para el servidor, nodos cliente (RPi, ESP32, etc.), sensores (SHT3x), actuadores (relés, etc.), fuentes de alimentación.
+*   Sistema Operativo: Raspberry Pi OS (o Linux compatible) en el servidor.
+*   Software: Python 3.x, pip, git.
+*   Broker MQTT: Mosquitto instalado y funcionando (recomendado `sudo apt install mosquitto mosquitto-clients`).
+*   Red: Conexión de red configurada para servidor y nodos.
+
+### Pasos de Configuración del Servidor
+
+1.  **Preparar el Entorno:**
     ```bash
-# Acceder por SSH o terminal
-# Actualizar el sistema
-sudo apt update && sudo apt upgrade -y
+    # Actualizar sistema
+    sudo apt update && sudo apt upgrade -y
 
-# Instalar paquetes esenciales
-sudo apt install -y git python3-pip python3-venv mosquitto mosquitto-clients i2c-tools
+    # Instalar dependencias del sistema (ej: git, python3-pip, python3-venv)
+    sudo apt install -y git python3-pip python3-venv i2c-tools
 
-# (Opcional pero recomendado) Dependencias para librerías científicas/imagen
-# sudo apt install -y libopenjp2-7 libatlas-base-dev
+    # (Opcional pero recomendado) Instalar y habilitar Mosquitto localmente
+    sudo apt install -y mosquitto mosquitto-clients
+    sudo systemctl enable mosquitto
+    sudo systemctl start mosquitto
+    # Verificar estado: sudo systemctl status mosquitto
 
-# Habilitar interfaces necesarias (ej. I2C para SHT3x, Serial para MH-Z19)
-sudo raspi-config
-# Ir a 'Interface Options' y habilitar I2C, Serial Port (deshabilitar login shell, habilitar hardware serial).
-# Reiniciar si es necesario.
-
-# Verificar I2C (debería detectar el SHT3X en 0x44 o 0x45 si está conectado)
-i2cdetect -y 1
-```
-
-### 2. Configuración del Servidor Central (Raspberry Pi)
+    # (Opcional) Configurar Mosquitto (ej: permitir conexiones anónimas para pruebas)
+    # sudo nano /etc/mosquitto/conf.d/local.conf
+    # -> Añadir: listener 1883
+    # -> Añadir: allow_anonymous true
+    # sudo systemctl restart mosquitto
+    ```
+2.  **Clonar y Configurar la Aplicación:**
     ```bash
-# Clonar el repositorio (ajusta la URL)
-git clone <url-del-repositorio> raspServerNative
-cd raspServerNative
+    # Clonar el repositorio
+    git clone <url-del-repositorio> raspServerNative
+    cd raspServerNative
 
-# Crear y activar entorno virtual
+    # Crear y activar entorno virtual
     python3 -m venv venv
-source venv/bin/activate
+    source venv/bin/activate
 
-# Instalar dependencias de Python
-pip install --upgrade pip
-pip install -r requirements.txt
+    # Instalar dependencias Python
+    pip install --upgrade pip
+    pip install -r requirements.txt
 
-# Configurar Broker MQTT (si se usa el local)
-# Puedes editar /etc/mosquitto/mosquitto.conf o añadir config en /etc/mosquitto/conf.d/
-# Asegúrate de permitir conexiones anónimas o configura usuarios si es necesario.
-# Ejemplo: Añadir 'allow_anonymous true' a un archivo .conf en conf.d
-# sudo nano /etc/mosquitto/conf.d/local.conf
-# Contenido:
-# listener 1883
-# allow_anonymous true
-# Reiniciar Mosquitto
-sudo systemctl restart mosquitto
-sudo systemctl enable mosquitto # Para que inicie automáticamente
+    # ¡IMPORTANTE! Configurar la ruta del Frontend Angular
+    # Edita el archivo app.py
+    nano app.py
+    # Modifica la variable ANGULAR_BUILD_FOLDER para que apunte a la
+    # carpeta 'dist/<nombre-app>' de tu build de Angular.
+    # Ejemplo: ANGULAR_BUILD_FOLDER = "/home/pi/raspServerNative/angular_app/dist/mushroom-automation"
 
-# Ajustar la ruta de Angular en app.py ¡IMPORTANTE!
-nano app.py 
-# Modificar la variable ANGULAR_BUILD_FOLDER para que apunte a la carpeta dist/ correcta de tu build de Angular.
+    # (Opcional) Configurar la ubicación de la base de datos
+    # Edita el archivo database.py si deseas cambiar la ruta
+    # nano database.py
+    # Modifica la ruta en: conn = sqlite3.connect('/ruta/deseada/sensor_data.db')
+    ```
+3.  **Configurar Nodos Cliente:**
+    *   Programa tus nodos cliente (RPi, ESP32, etc.) para:
+        *   Conectarse al broker MQTT (IP o hostname del servidor donde corre Mosquitto).
+        *   Usar un `client_id` único.
+        *   Publicar datos de sensores y (opcionalmente) estado en los tópicos MQTT correctos (ver [Comunicación MQTT](#-comunicación-mqtt)).
+        *   Suscribirse a los tópicos de control de actuadores correspondientes.
+4.  **Construir y Desplegar Frontend (Angular):**
+    *   Asegúrate de tener Node.js y Angular CLI instalados.
+    *   Navega al directorio de tu aplicación Angular.
+    *   Instala dependencias: `npm install`
+    *   Construye la aplicación para producción: `ng build` (o comando similar).
+    *   Copia el contenido de la carpeta `dist/<nombre-app>` generada a la ubicación que configuraste en `ANGULAR_BUILD_FOLDER` dentro del proyecto `raspServerNative`.
 
-# (Opcional) Configurar como servicio systemd para ejecución automática
-# Crear un archivo de servicio (ej. /etc/systemd/system/raspserver.service)
-# sudo nano /etc/systemd/system/raspserver.service
-# Contenido Ejemplo:
-# [Unit]
-# Description=RaspServer Flask Application
-# After=network.target mosquitto.service
-# 
-# [Service]
-# # ¡IMPORTANTE! Ajusta User y WorkingDirectory a tu configuración
-# User=pi 
-# WorkingDirectory=/home/pi/raspServerNative 
-# ExecStart=/home/pi/raspServerNative/venv/bin/python app.py
-# Restart=always
-# Environment="PATH=/home/pi/raspServerNative/venv/bin"
-# 
-# [Install]
-# WantedBy=multi-user.target
+### Configuración Específica de MSAD
 
-# Habilitar e iniciar el servicio
-# sudo systemctl daemon-reload
-# sudo systemctl enable raspserver
-# sudo systemctl start raspserver
-# sudo systemctl status raspserver # Para verificar
-```
-
-### 3. Configuración de Nodos Cliente
-*   **Si el nodo es otra Raspberry Pi:** Sigue pasos similares a la preparación del servidor, instala dependencias específicas del nodo (si hay un `requirements-node.txt`) y configura un script/servicio para que publique datos MQTT al broker central.
-*   **Si el nodo es un ESP32/Arduino:** Flashea el código correspondiente (no incluido en este repositorio backend) configurado con la IP/hostname del broker MQTT y los tópicos correctos.
-    *   **Nota Importante:** Evita quemar (hardcode) la dirección IP o el hostname del broker directamente en el código del nodo si es posible. Considera métodos de configuración (ej. WiFiManager en ESP) o descubrimiento (mDNS/Bonjour si tu red lo soporta y el nodo es compatible) para mayor flexibilidad. Si usas un nombre `.local` como `raspserver.local`, asegúrate que tanto el servidor como el nodo estén en la misma red y soporten resolución mDNS.
-
-### 4. Construcción del Frontend (Angular)
-*   Navega al directorio `angular_app/`.
-*   Instala dependencias: `npm install`
-*   Construye la aplicación: `ng build` (o el comando específico de tu proyecto Angular).
-*   **Verifica que la carpeta de salida** (ej. `angular_app/dist/nombre-app`) **coincida exactamente** con la ruta configurada en `ANGULAR_BUILD_FOLDER` dentro de `app.py`.
-
-### 5. Configuración Específica de MSAD (Opcional)
-*   La configuración básica de MSAD (como la activación de backups automáticos) se puede gestionar al iniciar `app.py` o mediante su API.
-*   Consulta [MSAD_DETAILS.md](MSAD_DETAILS.md) para detalles sobre permisos de directorios y configuración avanzada.
+*   La configuración principal de MSAD (directorio de backups, intervalo automático) se gestiona en `msad/config/backup_config.json` (se crea si no existe) y se puede inicializar/modificar vía `app.py` o API.
+*   Consulta [MSAD_DETAILS.md](docs/MSAD_DETAILS.md) para detalles sobre configuración avanzada y permisos.
 
 ## ▶️ Ejecutar la Aplicación
 
-Si **NO** configuraste el servicio `systemd`, puedes ejecutar manualmente:
-
 1.  Navega al directorio raíz del proyecto (`raspServerNative`).
 2.  Activa el entorno virtual: `source venv/bin/activate`
-3.  Inicia la aplicación: `python app.py`
+3.  Inicia la aplicación Flask: `python app.py`
 
-El servidor Flask se iniciará (por defecto en `http://0.0.0.0:5000`).
-*   Accede a la **Interfaz Web Angular** desde `http://raspserver.local:5000/`.
-*   La **API RESTful** está disponible bajo `http://raspserver.local:5000/api`. Consulta [API_DOCUMENTATION.md](API_DOCUMENTATION.md) para detalles.
-*   El cliente MQTT intentará conectarse al broker (configurado por defecto en `localhost`, revisa `mqtt_client.py` si necesitas cambiarlo).
-*   MSAD se inicializará (backups automáticos si están habilitados en `app.py` o vía API).
+El servidor se iniciará, escuchando por defecto en `http://0.0.0.0:5000`.
 
-## �� Comunicación MQTT
+*   **Inicialización:**
+    *   Creará las tablas de la base de datos (`sensor_data.db`) si no existen y aplicará valores iniciales (cliente 'mushroom1', parámetros, actuadores).
+    *   Se conectará al broker MQTT (configurado en `mqtt_client.py`, por defecto `localhost`).
+    *   Inicializará el módulo MSAD (iniciando backups automáticos si está configurado).
+*   **Acceso:**
+    *   **Interfaz Web Angular:** Abre un navegador y ve a `http://<IP_SERVIDOR>:5000/`.
+    *   **API RESTful:** Disponible bajo `http://<IP_SERVIDOR>:5000/api/`.
 
-La comunicación entre el servidor y los nodos se realiza vía MQTT. Los tópicos listados abajo son los usados por defecto en el servidor, asegúrate que el código de tus nodos cliente utilice los mismos.
+*(Reemplaza `<IP_SERVIDOR>` con la dirección IP de la Raspberry Pi donde corre el servidor).*
 
-*   **Publicación de Datos del Nodo al Servidor:**
-    *   Sensor SHT3x: `clients/<client_id>/sensor/sht3x` (Payload JSON: `{ "temperature": 25.5, "humidity": 85.2 }`)
-    *   Estado/Heartbeat: `clients/<client_id>/status/heartbeat` (Payload: "online" o JSON con info)
-    *   Registro inicial: `clients/<client_id>/register` (Payload JSON: `{ "device_type": "RPi-Node", "location": "Incubadora1" }`)
-*   **Publicación de Comandos del Servidor al Nodo:**
-    *   Control Actuador: `clients/<client_id>/actuator/<actuator_name>/set` (Payload: "on", "off", "toggle", o valor numérico para PWM)
-*   **Publicación de Estado del Actuador (Confirmación del Nodo al Servidor):**
-    *   `clients/<client_id>/actuator/<actuator_name>/state` (Payload: "on", "off", o valor actual)
+### Ejecución como Servicio (systemd - Opcional)
 
-*(`<client_id>` debe ser único para cada nodo; `<actuator_name>` ej: "light", "fan", "humidifier")*
+Para que la aplicación se ejecute automáticamente al inicio y se reinicie en caso de fallo, puedes configurarla como un servicio `systemd`.
 
-## 📚 Documentación de la API
+1.  Crea un archivo de servicio: `sudo nano /etc/systemd/system/raspserver.service`
+2.  Pega el siguiente contenido, **ajustando `User`, `Group`, `WorkingDirectory` y `ExecStart`** a tu configuración específica:
 
-Para una descripción detallada de **todos** los endpoints de la API RESTful (incluyendo los de MSAD), consulta:
-**[API_DOCUMENTATION.md](API_DOCUMENTATION.md)**
+    ```ini
+    [Unit]
+    Description=RaspServer Flask Application for Mushroom Control
+    After=network.target mosquitto.service # Asegura que la red y MQTT estén listos
 
-## 📄 Documentación Detallada de MSAD
+    [Service]
+    User=pi # Cambia 'pi' por tu usuario
+    Group=pi # Cambia 'pi' por tu grupo
+    WorkingDirectory=/home/pi/raspServerNative # Ruta absoluta a tu proyecto
+    Environment="PATH=/home/pi/raspServerNative/venv/bin" # Ruta al bin del venv
+    ExecStart=/home/pi/raspServerNative/venv/bin/python app.py # Ruta absoluta a python dentro del venv y a app.py
+    Restart=always # Reiniciar siempre si falla
+    RestartSec=5
 
-Para profundizar en el funcionamiento interno, configuración avanzada y funcionalidades específicas del módulo MSAD, consulta:
-**[MSAD_DETAILS.md](MSAD_DETAILS.md)**
+    [Install]
+    WantedBy=multi-user.target
+    ```
+3.  Habilita e inicia el servicio:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable raspserver
+    sudo systemctl start raspserver
+    sudo systemctl status raspserver # Verifica que esté corriendo
+    # Para ver logs: sudo journalctl -u raspserver -f
+    ```
+
+## 📚 Documentación Adicional
+
+*   **API RESTful Detallada:** Consulta [API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) para ver todos los endpoints, parámetros, ejemplos de solicitud/respuesta.
+*   **Módulo MSAD:** Consulta [MSAD_DETAILS.md](docs/MSAD_DETAILS.md) para entender la configuración avanzada, funcionamiento interno y solución de problemas específicos de backups y reportes.
 
 ## 🔑 Módulos Clave
 
-*   **`app.py`:** Orquesta la aplicación Flask, registra Blueprints, inicializa MQTT y MSAD, sirve el frontend Angular.
-*   **`mqtt_client.py`:** Gestiona la lógica MQTT (conexión, suscripción, publicación, procesamiento de mensajes, control automático).
-*   **`database.py` / `models/*.py`:** Creación de tablas y funciones de acceso a datos (muchas asíncronas con `aiosqlite`).
-*   **`routes/*.py`:** Endpoints de la API principal.
-*   **`msad/`:** Módulo integrado para backups, reportes y sus APIs. Ver [MSAD_DETAILS.md](MSAD_DETAILS.md).
+*   **`app.py`:** Orquestador principal. Inicializa Flask, registra blueprints, configura CORS, sirve el frontend, inicia MQTT y MSAD, maneja el ciclo de vida.
+*   **`database.py`:** Define el esquema de la base de datos y la lógica de inicialización.
+*   **`mqtt_client.py`:** Gestiona toda la lógica MQTT: conexión al broker, suscripciones dinámicas, procesamiento de mensajes entrantes (sensores, registro), publicación de comandos a actuadores (especialmente en modo automático), manejo de reconexiones, y uso de `asyncio` para operaciones no bloqueantes.
+*   **`models/*.py`:** Capa de acceso a datos. Contiene funciones (muchas `async`) para interactuar con las tablas de la base de datos SQLite (CRUD).
+*   **`routes/*.py`:** Define los endpoints de la API RESTful principal usando Blueprints de Flask.
+*   **`msad/`:** Módulo autónomo encapsulado para la gestión de datos (backups, reportes). Ver [MSAD_DETAILS.md](docs/MSAD_DETAILS.md).
 
 ## 🐛 Resolución de Problemas
 
 1.  **Error de conexión MQTT:**
-    *   Verifica que el servicio Mosquitto esté activo en el servidor: `sudo systemctl status mosquitto`.
-    *   Comprueba la configuración del broker (IP/hostname) en el servidor (`mqtt_client.py`, por defecto `localhost`) y en los nodos cliente (deben apuntar a la IP o hostname `.local` del servidor, ej. `raspserver.local`).
-    *   Revisa las reglas de firewall (ej. `sudo ufw status`) si UFW está activo. Asegúrate de que el puerto 1883 (o el configurado) esté abierto.
-    *   Usa `mosquitto_sub -h <broker_ip> -t "#" -v` (reemplaza `<broker_ip>` por la IP o hostname del servidor) para ver si los mensajes llegan al broker.
-2.  **Sensor SHT3X no detectado o no lee:**
-    *   Verifica las conexiones físicas (SDA, SCL, VCC, GND).
-    *   Asegúrate de que I2C esté habilitado (`sudo raspi-config`).
-    *   Ejecuta `i2cdetect -y 1` para ver si el dispositivo aparece (dirección 0x44 o 0x45).
-    *   Revisa los logs del script/servicio que lee el sensor en el nodo.
-3.  **API/Interfaz Web inaccesible:**
-    *   Verifica que la aplicación Flask (`app.py`) esté ejecutándose (manualmente o vía `systemd status raspserver`).
-    *   Comprueba la salida de `python app.py` por errores.
-    *   Asegúrate de estar usando la IP correcta o el hostname `.local` (ej. `raspserver.local`) de la Raspberry Pi del servidor en la URL del navegador.
-    *   Verifica el firewall si está activo.
-4.  **Problemas con la base de datos (`sensor_data.db`):**
-    *   Comprueba los permisos del archivo `sensor_data.db` y el directorio que lo contiene. El usuario que ejecuta `app.py` debe tener permisos de lectura/escritura.
-    *   Si la base de datos está corrupta (raro, pero posible tras cortes de energía), considera restaurar desde un backup de MSAD o eliminar el archivo `.db` (¡perderás todos los datos!) para que se cree de nuevo al iniciar `app.py`.
+    *   Verifica que `mosquitto` esté activo (`sudo systemctl status mosquitto`).
+    *   Confirma que la IP/hostname del broker en `mqtt_client.py` (si no es `localhost`) y en los nodos cliente sea correcta y accesible.
+    *   Revisa firewalls (`sudo ufw status`) en el servidor (puerto 1883 TCP debe estar permitido).
+    *   Usa `mosquitto_sub -h <BROKER_IP> -t "#" -v` para depurar mensajes en el broker.
+2.  **Sensor SHT3X no detectado/lee:**
+    *   Verifica conexiones físicas (SDA, SCL, VCC, GND).
+    *   Asegúrate de que I2C esté habilitado en el nodo (`sudo raspi-config` si es RPi).
+    *   Ejecuta `i2cdetect -y 1` en el nodo para ver si se detecta (dirección 0x44 o 0x45).
+3.  **API / Interfaz Web inaccesible:**
+    *   Confirma que `app.py` o el servicio `raspserver` esté corriendo (`python app.py` o `sudo systemctl status raspserver`).
+    *   Revisa los logs de la aplicación por errores (`sudo journalctl -u raspserver -f` si usas systemd).
+    *   Verifica que usas la IP correcta del servidor en el navegador.
+    *   Revisa el firewall del servidor (puerto 5000 TCP debe estar permitido).
+4.  **Problemas con Base de Datos (`sensor_data.db`):**
+    *   Verifica permisos de archivo/directorio. El usuario que ejecuta `app.py` necesita escribir en el archivo y su directorio. La ruta por defecto está en `database.py`.
+    *   Si sospechas corrupción, considera restaurar desde un backup MSAD o (como último recurso) elimina `sensor_data.db` (¡perderás datos!) para que se recree al reiniciar `app.py`.
+5.  **MSAD no funciona (Backups/Reportes):**
+    *   Verifica los permisos de escritura en el directorio configurado para backups/reportes (ver `msad/config/backup_config.json` o `MSAD_DETAILS.md`).
+    *   Consulta los logs de la aplicación para errores específicos de MSAD.
 
-## 🔄 Actualización del Sistema
+## 📞 Soporte
 
-```bash
-# Navega al directorio del proyecto
-cd ~/raspServerNative # O la ruta donde lo clonaste
-
-# Detén el servicio si está corriendo
-# sudo systemctl stop raspserver
-
-# Descarga los últimos cambios desde Git
-git pull origin main # O la rama que uses
-
-# Activa el entorno virtual
-source venv/bin/activate
-
-# Actualiza las dependencias
-pip install -r requirements.txt
-
-# (Opcional) Reconstruye el frontend si hubo cambios
-# cd angular_app && npm install && ng build && cd ..
-
-# (Opcional) Ejecuta scripts de migración de base de datos si existen
-
-# Reinicia el servicio o la aplicación
-# sudo systemctl start raspserver
-# O manualmente: python app.py
-```
-
-## 🆘 Soporte
-
-*   **Documentación API:** [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
-*   **Issues/Problemas:** Registrar en [Issues del Repositorio GitHub](issues)
-*   **Contacto:** danidiaz0799@gmail.com
-
----
-
-<div align="center">
-  <p>Desarrollado para cultivos inteligentes.</p>
-</div>
+Para problemas, preguntas o sugerencias, por favor abre un **Issue** en el repositorio de GitHub del proyecto.

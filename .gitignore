@@ -1,4 +1,5 @@
 __pycache__/
 
-# Database file
+venvRasp/
+
 sensor_data.db
