@@ -1,0 +1,4 @@
+__pycache__/
+
+# Database file
+sensor_data.db

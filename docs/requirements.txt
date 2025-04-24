@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+paho-mqtt
+aiosqlite
+numpy
+schedule
