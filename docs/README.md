@@ -211,7 +211,7 @@ La comunicación se basa en tópicos MQTT estructurados. Los nodos cliente deben
 1.  **Preparar el Entorno:**
     ```bash
     # Actualizar sistema
-    sudo apt update && sudo apt upgrade -y
+sudo apt update && sudo apt upgrade -y
 
     # Instalar dependencias del sistema (ej: git, python3-pip, python3-venv)
     sudo apt install -y git python3-pip python3-venv i2c-tools
@@ -231,20 +231,20 @@ La comunicación se basa en tópicos MQTT estructurados. Los nodos cliente deben
 2.  **Clonar y Configurar la Aplicación:**
     ```bash
     # Clonar el repositorio
-    git clone <url-del-repositorio> raspServerNative
-    cd raspServerNative
+git clone <url-del-repositorio> raspServerNative
+cd raspServerNative
 
-    # Crear y activar entorno virtual
+# Crear y activar entorno virtual
     python3 -m venv venv
-    source venv/bin/activate
+source venv/bin/activate
 
     # Instalar dependencias Python
-    pip install --upgrade pip
-    pip install -r requirements.txt
+pip install --upgrade pip
+pip install -r requirements.txt
 
     # ¡IMPORTANTE! Configurar la ruta del Frontend Angular
     # Edita el archivo app.py
-    nano app.py
+nano app.py 
     # Modifica la variable ANGULAR_BUILD_FOLDER para que apunte a la
     # carpeta 'dist/<nombre-app>' de tu build de Angular.
     # Ejemplo: ANGULAR_BUILD_FOLDER = "/home/pi/raspServerNative/angular_app/dist/mushroom-automation"
@@ -263,7 +263,7 @@ La comunicación se basa en tópicos MQTT estructurados. Los nodos cliente deben
 4.  **Construir y Desplegar Frontend (Angular):**
     *   Asegúrate de tener Node.js y Angular CLI instalados.
     *   Navega al directorio de tu aplicación Angular.
-    *   Instala dependencias: `npm install`
+*   Instala dependencias: `npm install`
     *   Construye la aplicación para producción: `ng build` (o comando similar).
     *   Copia el contenido de la carpeta `dist/<nombre-app>` generada a la ubicación que configuraste en `ANGULAR_BUILD_FOLDER` dentro del proyecto `raspServerNative`.
 
