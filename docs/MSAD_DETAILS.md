@@ -1,248 +1,454 @@
-# 📊 MSAD - Detalles del Módulo de Almacenamiento y Datos
+# MSAD - Módulo de Almacenamiento y Análisis de Datos
 
 <div align="center">
 
-![Versión](https://img.shields.io/badge/Versión-1.0.0--minimal-blue)
-![Integración](https://img.shields.io/badge/Integración-RaspServer-green)
+![Versión](https://img.shields.io/badge/Versión-1.1.0-blue)
 ![Estado](https://img.shields.io/badge/Estado-Activo-brightgreen)
+![Integración](https://img.shields.io/badge/Integración-RaspServer-green)
 
 </div>
 
 ## 📋 Índice
 
-- [Descripción](#-descripción)
+- [Resumen](#-resumen)
 - [Arquitectura](#-arquitectura)
-- [Funcionalidades Detalladas](#-funcionalidades-detalladas)
-- [Integración con RaspServer](#-integración-con-raspserver)
-- [Esquema de Almacenamiento](#-esquema-de-almacenamiento)
-- [Flujo de Trabajo](#-flujo-de-trabajo)
-- [Instalación y Configuración Específica](#-instalación-y-configuración-específica)
-- [Solución de Problemas](#-solución-de-problemas)
+- [Funcionalidades](#-funcionalidades)
+  - [Sistema de Backups](#-sistema-de-backups)
+  - [Sistema de Reportes](#-sistema-de-reportes)
+- [Endpoints API](#-endpoints-api)
+- [Instalación y Configuración](#-instalación-y-configuración)
+- [Resolución de Problemas](#-resolución-de-problemas)
 
-## 📝 Descripción
+## 📝 Resumen
 
-MSAD es un **módulo integrado y optimizado** dentro del servidor principal, enfocado en la generación y gestión de backups y reportes. Permite extraer, filtrar y exportar datos críticos del cultivo (sensores, eventos, actuadores) para facilitar análisis detallados, toma de decisiones y asegurar la persistencia de los datos.
+MSAD es un módulo integrado en RaspServer que proporciona capacidades de almacenamiento, respaldo y generación de reportes para los datos del sistema de cultivo. Sus principales características son:
 
-### ✨ Características Clave
-
-| Característica              | Descripción                                                    |
-| :-------------------------- | :------------------------------------------------------------- |
-| 🚀 **Alta Performance**     | Consultas optimizadas, bajo impacto en recursos.               |
-| 🔄 **Formatos Múltiples**   | Exportación de reportes en JSON y CSV.                         |
-| 💾 **Backups Robustos**     | Backups automáticos/manuales, restauración segura.             |
-| ⏰ **Programación**         | Intervalo configurable para backups automáticos (`schedule`).   |
-| 🔍 **Filtrado Avanzado**    | Selección por cliente, fechas, tipo de datos en reportes.      |
-| 📂 **Gestión de Archivos**  | Almacenamiento organizado y API para listar/descargar/eliminar. |
-| 🔗 **Integración Simple**   | API RESTful integrada en el servidor principal.                |
-
----
+- **Backups automáticos y manuales** de la base de datos principal
+- **Generación de reportes** en formatos JSON y CSV
+- **API RESTful** para interactuar con todas las funcionalidades
+- **Alta eficiencia** en el manejo de datos con mínimo impacto en recursos
 
 ## 🏗 Arquitectura
 
-MSAD opera como un módulo dentro de la aplicación Flask principal, interactuando con la base de datos común y exponiendo su funcionalidad a través de blueprints API específicos.
+El módulo MSAD está diseñado como un componente integrado en la aplicación Flask principal, expuesto a través de blueprints API específicos.
 
 ```
-                    ┌───────────────────┐
-                    │   Flask Server    │
-                    │     (app.py)      │  <-- Inicializa MSAD
-                    │                   │      Registra Blueprints MSAD
-                    └─────────┬─────────┘
-                              │ (Llamadas API /api/msad/*, /api/clients/.../msad/*)
-                              ▼
-┌─────────────────────────────────────────────────────┐
-│                 MSAD Módulo Integrado               │
-│                                                     │
-│  ┌───────────────┐         ┌────────────────────┐  │
-│  │  API Layer    │ ◄────► │     Core Layer     │  │
-│  │ (Blueprints)  │         │ (backup.py,       │  │
-│  │ api/*.py      │         │  reports.py,       │  │
-│  │               │         │  system.py)        │  │
-│  └───────────────┘         └─────────┬──────────┘  │
-│                                      │ (Acceso DB)   │
-└──────────────────────────────────────┼──────────────┘
-                                       ▼
-                             ┌──────────────────┐
-                             │  Base de Datos   │
-                             │   (SQLite -      │
-                             │ sensor_data.db)  │
-                             └──────────────────┘
+┌─────────────────────────┐
+│    Aplicación Flask     │◄───┐ Registra blueprints
+│      (app.py)           │    │ e inicializa MSAD
+└───────────┬─────────────┘    │
+            │                  │
+            ▼                  │
+┌─────────────────────────────────────────────┐
+│                 MSAD                        │
+│                                             │
+│  ┌─────────────┐       ┌─────────────────┐  │
+│  │  API Layer  │◄────► │    Core Layer   │  │
+│  │ (endpoints) │       │  (lógica de     │  │
+│  └─────────────┘       │   negocio)      │  │
+│                        └────────┬────────┘  │
+│                                 │           │
+└─────────────────────────────────┼───────────┘
+                                  │
+                                  ▼
+                       ┌────────────────────┐
+                       │   Base de Datos    │
+                       │  (sensor_data.db)  │
+                       └────────────────────┘
 ```
 
-*   **Capa API (`msad/api/`)**: Define los endpoints RESTful (usando Flask Blueprints) para interactuar con las funciones de MSAD.
-*   **Capa Core (`msad/core/`)**: Contiene la lógica principal para backups, reportes y utilidades del sistema (manejo de rutas, logs).
-*   **Base de Datos**: Accede directamente a `sensor_data.db`.
+### Componentes Principales
 
----
+1. **API Layer**: Implementa endpoints RESTful para acceder a las funcionalidades
+   - Ubicación: `msad/api/`
+   - Archivos: `backup_routes.py`, `report_routes.py`, `system_routes.py`
 
-## 🎯 Funcionalidades Detalladas
+2. **Core Layer**: Contiene la lógica de negocio e interacción con la base de datos
+   - Ubicación: `msad/core/`
+   - Archivos: `backup.py`, `reports.py`, `system.py`
 
-### 📊 Gestión de Reportes
+3. **Almacenamiento**: Gestiona archivos de backups y reportes generados
+   - Estructura: `<STORAGE_PATH>/msad/{backups,reports}`
 
-| Funcionalidad         | Descripción                                                                                                |
-| :-------------------- | :--------------------------------------------------------------------------------------------------------- |
-| **Generación**        | Crea reportes históricos bajo demanda vía API (`POST /api/clients/{client_id}/msad/reports`).                |
-| **Filtrado**          | Permite filtrar por `client_id`, `start_date`, `end_date`, `data_type` (`sensors`, `events`, `actuators`).   |
-| **Formatos**          | Exporta a `JSON` o `CSV`.                                                                                  |
-| **Consulta Datos**    | Accede a las tablas relevantes (`sht3x_data`, `events`, `actuator_log`) de `sensor_data.db`.                |
-| **Gestión Archivos** | API para listar (`GET /api/.../reports`), descargar (`GET /api/.../download/...`) y eliminar (`DELETE /api/.../reports/...`) reportes. |
+## 🔧 Funcionalidades
 
-### 💾 Gestión de Backups
+### 💾 Sistema de Backups
 
-| Funcionalidad            | Descripción                                                                                                |
-| :----------------------- | :--------------------------------------------------------------------------------------------------------- |
-| **Backups Automáticos**  | Ejecución periódica configurable (`schedule`) de backups completos de `sensor_data.db`.                      |
-| **Backups Manuales**     | Creación inmediata vía API (`POST /api/msad/backups/create`).                                               |
-| **Listado y Descarga**   | API para listar (`GET /api/msad/backups`) y descargar (`GET /api/msad/backups/download/...`) archivos `.db`. |
-| **Eliminación**          | API para eliminar backups específicos (`DELETE /api/msad/backups/...`).                                      |
-| **Restauración Segura**  | Proceso API (`POST /api/msad/backups/restore/...`) que crea backup de seguridad antes de sobrescribir la BD. |
-| **Gestión Planificador** | API para consultar estado (`GET`) y configurar (`POST`) el scheduler de backups automáticos (`/api/msad/backups/scheduler`). |
+#### Características
 
----
+- **Backups automáticos**: Programados a intervalos configurables
+- **Backups manuales**: Bajo demanda a través de la API
+- **Rotación**: Conserva un número máximo de backups, eliminando los más antiguos
+- **Verificación de integridad**: Comprueba que la base de datos no esté corrupta
+- **Restauración segura**: Crea un backup de seguridad antes de restaurar
 
-## 🔌 Integración con RaspServer
+#### Flujo de Creación de Backup
 
-La integración se realiza en `app.py`:
+1. Verifica existencia y estado de la base de datos
+2. Genera nombre único con timestamp y tipo (manual/auto)
+3. Verifica integridad de la base de datos
+4. Crea copia de seguridad en `<STORAGE_PATH>/msad/backups/`
+5. Rota backups antiguos si es necesario
 
-1.  **Importación:** Se importan las funciones `init_msad`, `shutdown_msad` y los `create_*_blueprint` desde el paquete `msad`.
-2.  **Registro de Blueprints:** Se crean y registran los blueprints de MSAD (`system_bp`, `backup_bp`, `report_bp`) en la aplicación Flask bajo el prefijo `/api`.
-3.  **Inicialización:** Se llama a `init_msad()` al iniciar `app.py`, opcionalmente activando `auto_backup`.
-4.  **Apagado Limpio:** Se registra `shutdown_msad()` con `atexit` para detener limpiamente el scheduler de backups al cerrar la aplicación.
+#### Flujo de Restauración
+
+1. Crea backup de seguridad de la base de datos actual
+2. Copia el archivo de backup seleccionado como la base de datos principal
+3. Verifica integridad después de la restauración
+
+### 📊 Sistema de Reportes
+
+#### Características
+
+- **Generación flexible**: Filtrado por cliente, fechas y tipo de datos
+- **Múltiples formatos**: JSON y CSV
+- **Estructura organizada**: Reportes guardados por cliente
+- **Metadatos completos**: Información detallada sobre cada reporte
+
+#### Tipos de Reportes
+
+| Tipo        | Descripción                            | Tabla BD           |
+|-------------|----------------------------------------|--------------------|
+| `sensors`   | Datos de sensores (temp/humedad)       | `sht3x_data`       |
+| `events`    | Eventos del sistema                    | `events`           |
+| `actuators` | Acciones de los actuadores             | `actuator_actions` |
+
+#### Flujo de Generación de Reportes
+
+1. Valida parámetros de entrada (cliente, fechas, tipo, formato)
+2. Consulta datos en la base de datos según criterios
+3. Formatea los datos al formato solicitado (JSON/CSV)
+4. Guarda el archivo en `<STORAGE_PATH>/msad/reports/<client_id>/`
+5. Retorna metadatos del reporte generado
+
+## 🌐 Endpoints API
+
+### Estado del Sistema
+
+```
+GET /api/msad/status
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "service": "msad",
+  "version": "1.1.0",
+  "status": "running"
+}
+```
+
+### Gestión de Backups
+
+#### Listar backups
+
+```
+GET /api/msad/backups
+```
+
+**Parámetros opcionales:**
+- `type`: Filtrar por tipo (`manual` o `auto`)
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "backups": [
+    {
+      "backup_id": "backup_20231015_143022",
+      "filename": "sensor_data_manual_20231015_143022.db",
+      "type": "manual",
+      "size": 1024567,
+      "created_at": "2023-10-15T14:30:22",
+      "download_url": "/api/msad/backups/download/sensor_data_manual_20231015_143022.db"
+    }
+  ]
+}
+```
+
+#### Crear backup manual
+
+```
+POST /api/msad/backups/create
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "filename": "sensor_data_manual_20231015_143022.db",
+  "size": 1024567,
+  "download_url": "/api/msad/backups/download/sensor_data_manual_20231015_143022.db"
+}
+```
+
+#### Descargar backup
+
+```
+GET /api/msad/backups/download/{filename}
+```
+
+**Respuesta:** Archivo binario
+
+#### Eliminar backup
+
+```
+DELETE /api/msad/backups/{filename}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Backup eliminado correctamente"
+}
+```
+
+#### Restaurar backup
+
+```
+POST /api/msad/backups/restore/{filename}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Backup restaurado correctamente",
+  "safety_backup": "sensor_data_auto_20231015_150022.db"
+}
+```
+
+#### Consultar estado del scheduler
+
+```
+GET /api/msad/backups/scheduler
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "enabled": true,
+  "interval_hours": 24,
+  "next_backup": "2023-10-16T00:00:00",
+  "last_backup": "2023-10-15T00:00:00"
+}
+```
+
+#### Configurar scheduler
+
+```
+POST /api/msad/backups/scheduler
+```
+
+**Cuerpo:**
+```json
+{
+  "enabled": true,
+  "interval_hours": 12
+}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Scheduler configurado correctamente",
+  "status": {
+    "enabled": true,
+    "interval_hours": 12,
+    "next_backup": "2023-10-15T12:00:00"
+  }
+}
+```
+
+### Gestión de Reportes
+
+#### Generar reporte
+
+```
+POST /api/clients/{client_id}/msad/reports
+```
+
+**Cuerpo:**
+```json
+{
+  "start_date": "2023-10-01",
+  "end_date": "2023-10-15",
+  "data_type": "sensors",
+  "format": "csv"
+}
+```
+
+**Parámetros:**
+- `start_date`: Fecha inicial (YYYY-MM-DD)
+- `end_date`: Fecha final (YYYY-MM-DD)
+- `data_type`: Tipo de datos (`sensors`, `events`, `actuators`)
+- `format`: Formato de salida (`json`, `csv`)
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "filename": "greenhouse1_sensors_20231001_to_20231015_20231015_143022.csv",
+  "records": 350,
+  "size": 25678,
+  "download_url": "/api/clients/greenhouse-1/msad/reports/download/greenhouse1_sensors_20231001_to_20231015_20231015_143022.csv"
+}
+```
+
+#### Listar reportes de un cliente
+
+```
+GET /api/clients/{client_id}/msad/reports
+```
+
+**Parámetros opcionales:**
+- `format`: Filtrar por formato (`json`, `csv`)
+- `data_type`: Filtrar por tipo de datos (`sensors`, `events`, `actuators`)
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "reports": [
+    {
+      "filename": "greenhouse1_sensors_20231001_to_20231015_20231015_143022.csv",
+      "client_id": "greenhouse-1",
+      "data_type": "sensors",
+      "format": "csv",
+      "created_at": "2023-10-15T14:30:22",
+      "size": 25678,
+      "download_url": "/api/clients/greenhouse-1/msad/reports/download/greenhouse1_sensors_20231001_to_20231015_20231015_143022.csv"
+    }
+  ]
+}
+```
+
+#### Listar todos los reportes
+
+```
+GET /api/msad/reports
+```
+
+**Parámetros opcionales:** Igual que el endpoint anterior
+
+#### Descargar reporte
+
+```
+GET /api/clients/{client_id}/msad/reports/download/{filename}
+```
+
+**Respuesta:** Archivo CSV o JSON
+
+#### Eliminar reporte
+
+```
+DELETE /api/clients/{client_id}/msad/reports/{filename}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Reporte eliminado correctamente"
+}
+```
+
+## ⚙️ Instalación y Configuración
+
+### Requisitos Previos
+
+- Python 3.7 o superior
+- Dependencia `schedule` para los backups automáticos
+- Permisos de escritura en el directorio de almacenamiento
+
+### Configuración del Directorio de Almacenamiento
+
+El módulo MSAD usa por defecto estas rutas:
+
+- **Linux**: `/mnt/storage/msad/`
+- **Windows (Desarrollo)**: `storage/msad/` (relativo al proyecto)
+
+Estructura de directorios:
+
+```
+<STORAGE_PATH>/msad/
+├── backups/           # Archivos de respaldo de la BD
+├── reports/           # Reportes generados por cliente
+│   ├── client_1/
+│   └── client_2/
+└── logs/              # Archivos de registro
+```
+
+### Integración con RaspServer
+
+El módulo MSAD se inicializa y registra en `app.py`:
 
 ```python
-# Ejemplo simplificado en app.py
 from msad import (
     init_msad, shutdown_msad,
     create_system_blueprint, create_backup_blueprint, create_report_blueprint
 )
 import atexit
 
-# ... app = Flask(...) ...
-
-# Registrar Blueprints
+# Crear y registrar blueprints
 system_bp = create_system_blueprint()
 backup_bp = create_backup_blueprint()
 report_bp = create_report_blueprint()
+
 app.register_blueprint(system_bp, url_prefix='/api')
 app.register_blueprint(backup_bp, url_prefix='/api')
 app.register_blueprint(report_bp, url_prefix='/api')
 
-# Inicializar MSAD
-msad_status = init_msad(auto_backup=True, backup_interval_hours=24)
+# Inicializar con backups automáticos cada 24 horas
+init_msad(auto_backup=True, backup_interval_hours=24)
 
-# Registrar apagado
-atexit.register(shutdown_msad) # Asumiendo que shutdown_msad detiene el scheduler
-
-# ... app.run(...) ...
+# Registrar función de apagado limpio
+atexit.register(shutdown_msad)
 ```
 
----
+### Parámetros de Configuración
 
-## 📂 Esquema de Almacenamiento
+| Parámetro                | Descripción                                     | Valor por defecto |
+|--------------------------|--------------------------------------------------|-------------------|
+| `auto_backup`            | Habilitar backups automáticos                   | `False`           |
+| `backup_interval_hours`  | Intervalo en horas entre backups automáticos    | `24`              |
+| `MAX_BACKUPS`            | Número máximo de backups a conservar            | `10`              |
+| `STORAGE_PATH`           | Ruta base para almacenamiento                   | Ver arriba        |
 
-MSAD organiza sus archivos en una estructura configurable. La ruta base por defecto o recomendada es:
+## 🛠 Resolución de Problemas
 
-*   **Producción (Linux):** `/mnt/storage/msad/` (o similar, configurable)
-*   **Desarrollo (Windows):** `storage/msad/` (relativa al proyecto)
+### Problemas Comunes
+
+| Problema                              | Posible Causa                                     | Solución                                                       |
+|---------------------------------------|---------------------------------------------------|----------------------------------------------------------------|
+| Error "Permission denied"             | Permisos insuficientes en directorio              | `sudo chmod -R 755 <STORAGE_PATH>`                             |
+| No se crean backups automáticos       | Schedule no funciona o app reiniciada             | Verificar logs, reiniciar servidor                             |
+| Error al restaurar backup             | BD en uso o corrupta                              | Detener servidor antes de restaurar                            |
+| "No hay datos" al generar reporte     | Rango de fechas incorrecto o cliente sin datos    | Verificar que existan datos para el cliente y rango            |
+| Archivo de reporte no se descarga     | Nombre incorrecto o falta MIME type               | Verificar ruta exacta y formato en la URL                      |
+
+### Consulta de Logs
+
+Los logs de MSAD se almacenan en:
 
 ```
-<RUTA_BASE>/msad/
-├── backups/
-│   ├── sensor_data_auto_YYYYMMDD_HHMMSS.db
-│   └── sensor_data_manual_YYYYMMDD_HHMMSS.db
-├── reports/
-│   ├── <client_id_1>/
-│   │   ├── <client_id_1>_sensors_...<timestamp>.json
-│   │   └── <client_id_1>_events_...<timestamp>.csv
-│   └── <client_id_2>/
-│       └── ...
-└── logs/
-    └── msad.log
+<STORAGE_PATH>/msad/logs/msad.log
 ```
 
-**Importante:** Asegurar que la `<RUTA_BASE>/msad` y sus subdirectorios (`backups`, `reports`, `logs`) existan y tengan permisos de escritura para el usuario que ejecuta la aplicación Flask.
+Ejemplo para consultar los últimos 100 registros:
 
----
+```bash
+tail -n 100 /mnt/storage/msad/logs/msad.log
+```
 
-## 🔄 Flujo de Trabajo
+### Verificación del Sistema
 
-A continuación se describen los flujos principales para las operaciones de reportes y backups.
+Para comprobar el estado de MSAD:
 
-### 📊 Generación y Consulta de Reportes
-
-1.  **Creación de Reporte:**
-    1.  El cliente (frontend/usuario) envía una petición `POST` a `/api/clients/{client_id}/msad/reports` incluyendo en el cuerpo JSON los filtros requeridos (`start_date`, `end_date`) y opcionales (`data_type`, `format`).
-    2.  La capa API (`msad/api/report_routes.py`) recibe la solicitud y llama a la función correspondiente en la capa Core (`msad/core/reports.py`).
-    3.  La capa Core consulta la base de datos `sensor_data.db` aplicando los filtros especificados.
-    4.  Si se encuentran datos, se genera el archivo de reporte en el formato solicitado (JSON o CSV).
-    5.  El archivo generado se almacena en la ruta configurada: `<RUTA_BASE>/msad/reports/{client_id}/`.
-    6.  La API devuelve una respuesta JSON al cliente indicando el éxito y proporcionando metadatos del reporte generado (nombre de archivo, URL de descarga, número de registros, etc.).
-
-2.  **Listado de Reportes:**
-    1.  El cliente envía una petición `GET` a `/api/clients/{client_id}/msad/reports` (para un cliente) o `/api/msad/reports` (para todos), opcionalmente con parámetros query (`format`, `data_type`) para filtrar.
-    2.  La capa API llama a la función de listado en la capa Core.
-    3.  La capa Core examina el directorio de reportes (`<RUTA_BASE>/msad/reports/`), aplica los filtros si existen, y recopila los metadatos de los reportes encontrados.
-    4.  La API devuelve una respuesta JSON con la lista de los reportes que coinciden con los criterios.
-
-3.  **Descarga de Reporte:**
-    1.  El cliente envía una petición `GET` a `/api/clients/{client_id}/msad/reports/download/{filename}`.
-    2.  La capa API llama a la función correspondiente en la capa Core.
-    3.  La capa Core localiza el archivo especificado dentro del directorio del cliente en `<RUTA_BASE>/msad/reports/`.
-    4.  Si el archivo existe, el servidor lo envía como una descarga binaria con el `Content-Type` apropiado (JSON o CSV).
-
-4.  **Eliminación de Reporte:**
-    1.  El cliente envía una petición `DELETE` a `/api/clients/{client_id}/msad/reports/{report_id}`.
-    2.  La capa API llama a la función de eliminación en la capa Core.
-    3.  La capa Core busca el archivo asociado al `report_id` y lo elimina del sistema de archivos.
-    4.  La API devuelve una respuesta JSON confirmando la eliminación.
-
-### 💾 Proceso de Backup y Restauración
-
-*   **Backups Automáticos:**
-    1.  El planificador (`schedule`), configurado al iniciar `app.py` o vía API, ejecuta periódicamente (cada X horas) la tarea definida en `msad/core/backup.py`.
-    2.  La tarea llama a la función `create_backup(manual=False)`.
-    3.  Esta función realiza una copia del archivo `sensor_data.db`.
-    4.  La copia se almacena en `<RUTA_BASE>/msad/backups/` con un nombre que indica la fecha, hora y tipo "auto".
-
-*   **Operaciones Manuales vía API:**
-    1.  **Crear Backup:** `POST /api/msad/backups/create` desencadena la llamada a `create_backup(manual=True)`, que guarda una copia en `backups/` con tipo "manual" y devuelve detalles en JSON.
-    2.  **Listar Backups:** `GET /api/msad/backups` llama a `list_backups()`, que lee el contenido del directorio `backups/` y devuelve una lista JSON con los detalles.
-    3.  **Restaurar Backup:** `POST /api/msad/backups/restore/{filename}` llama a `restore_backup()`:
-        *   Primero, crea un backup de seguridad del `sensor_data.db` *actual*.
-        *   Luego, lee el archivo `{filename}` desde `backups/`.
-        *   Finalmente, reemplaza el `sensor_data.db` actual con el contenido del backup leído.
-        *   Devuelve una respuesta JSON confirmando la operación y el nombre del backup de seguridad.
-    4.  **Descargar Backup:** `GET /api/msad/backups/download/{filename}` llama a `get_backup_file()`, localiza el archivo en `backups/` y lo envía como descarga binaria.
-    5.  **Eliminar Backup:** `DELETE /api/msad/backups/{filename}` llama a `delete_backup()`, que elimina el archivo especificado de `backups/` y devuelve confirmación.
-    6.  **Consultar/Configurar Scheduler:** `GET` o `POST` a `/api/msad/backups/scheduler` interactúan con las funciones `get_backup_status()`, `start_backup_scheduler()` o `stop_backup_scheduler()` en `backup.py` para gestionar el estado del planificador `schedule`.
-
----
-
-## ⚙️ Instalación y Configuración Específica
-
-| Requisito/Paso               | Descripción                                                                                                | Acción / Verificación                                                                                                  |
-| :--------------------------- | :--------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
-| **Dependencias**             | Asegurar que `schedule` esté en `requirements.txt` para backups automáticos.                               | Verificar `requirements.txt`; Ejecutar `pip install -r requirements.txt`.                                              |
-| **Activación Backups Auto.** | Habilitar/configurar intervalo al iniciar `app.py` o vía API.                                                | Modificar `init_msad(auto_backup=True, ...)` en `app.py` O usar `POST /api/msad/backups/scheduler`.                    |
-| **Permisos Directorios**     | El directorio base de MSAD y sus subdirectorios (`backups`, `reports`, `logs`) deben existir y ser escribibles. | Crear directorios (`mkdir -p ...`); Asignar permisos (`sudo chown -R user:group ...`, `sudo chmod -R u+rw ...`). |
-| **Configuración Rutas**      | (Opcional) Cambiar la ruta base de almacenamiento si es necesario.                                           | Buscar y modificar `STORAGE_PATH` en `msad/config/` o `msad/core/`. Recordar ajustar permisos.                          |
-
----
-
-## ❓ Solución de Problemas
-
-| Problema                                      | Causa Probable                                                                 | Solución                                                                                                                                |
-| :-------------------------------------------- | :----------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| Error al generar reporte: "No hay datos"      | Rango de fechas/cliente incorrecto; No hay datos en BD.                          | Verificar parámetros API; Usar `POST /api/msad/test-data` (si existe y está accesible); Consultar BD.                                       |
-| Error al generar reporte: "Error BD" / 500    | Problema acceso `sensor_data.db`; BD bloqueada; Ruta BD incorrecta.              | Verificar permisos `sensor_data.db`; Verificar ruta BD en MSAD; Revisar logs (`msad.log`, Flask).                                      |
-| Error al descargar/listar/eliminar: 404       | Nombre archivo/ID incorrecto; Archivo no existe; Ruta almacenamiento errónea.  | Verificar nombre/ID; Listar de nuevo; Verificar `STORAGE_PATH` y permisos.                                                              |
-| Error al crear backup: "Permission denied"    | Directorio `backups/` no existe o sin permisos de escritura.                   | Crear directorio `backups/` en `STORAGE_PATH`; Asignar permisos de escritura al usuario de Flask.                                       |
-| Error al restaurar backup: "DB locked" / 500 | `sensor_data.db` en uso por otro proceso.                                      | Intentar detener servidor Flask antes de restaurar (si posible); Reintentar en baja actividad.                                           |
-| Backups automáticos no se ejecutan          | `schedule` no instalado; Planificador deshabilitado; Error tarea; Proceso no corre. | Verificar `requirements.txt`; Habilitar scheduler (API/`init_msad`); Revisar `msad.log`; Asegurar que `app.py` corra persistentemente. |
-
-*   **Logs:** Consultar `msad.log` (en `<RUTA_BASE>/msad/logs/`) para detalles específicos.
-
----
-
-<div align="center">
-    **MSAD** - Documentación Detallada v1.0.0 - Integrado en el Servidor
-</div> 
+```bash
+curl http://raspserver.local:5000/api/msad/status
+``` 
