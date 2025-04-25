@@ -11,11 +11,6 @@ from collections import defaultdict
 from functools import lru_cache
 import threading
 
-# Configuracion MQTT (Añadir la constante aquí)
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_SYS_TOPIC_CLIENTS_CONNECTED = "$SYS/broker/clients/connected" # Tópico para el número de clientes conectados
-
 client = None
 client_last_events = {}  # Diccionario para rastrear el �ltimo evento por cliente y tipo
 client_actuator_cache = {}  # Cach� de actuadores por cliente
@@ -48,7 +43,6 @@ def run_coroutine(coro):
 
 # Manejo de mensajes optimizado
 def on_message(client, userdata, msg):
-    global external_clients_connected # Necesitamos modificar la variable global
     try:
         # Extraer el client_id del t�pico
         client_id = extract_client_id(msg.topic)
@@ -74,24 +68,6 @@ def on_message(client, userdata, msg):
                 name = data[0]
                 description = data[1] if len(data) > 1 else ""
                 run_coroutine(register_client(client_id, name, description))
-        elif msg.topic == MQTT_SYS_TOPIC_CLIENTS_CONNECTED:
-            try:
-                num_clients = int(msg.payload.decode())
-                # Asumimos que este script es 1 cliente. Si hay más de 1, hay externos.
-                currently_external = num_clients > 1
-
-                if currently_external and not external_clients_connected:
-                    print("Primer cliente MQTT externo conectado")
-                    external_clients_connected = True
-                elif not currently_external and external_clients_connected:
-                    print("Ultimo cliente MQTT externo desconectado.")
-                    external_clients_connected = False
-                # Opcional: imprimir el número total de clientes para depuración
-                # print(f"Clientes conectados al broker: {num_clients}")
-
-            except ValueError:
-                print(f"Error al parsear el numero de clientes desde {MQTT_SYS_TOPIC_CLIENTS_CONNECTED}: {msg.payload.decode()}")
-            return # No procesar más este mensaje
         else:
             print(f"Topico no reconocido: {msg.topic}")
     except Exception as e:
@@ -326,7 +302,6 @@ def connect_mqtt():
     # Configurar cliente MQTT
     client = mqtt.Client()
     client.on_message = on_message
-    client.on_disconnect = on_disconnect
     
     # Configurar reconexi�n autom�tica
     client.reconnect_delay_set(min_delay=1, max_delay=120)
@@ -337,7 +312,6 @@ def connect_mqtt():
         # Suscribirse a todos los t�picos de clientes
         client.subscribe('clients/+/sensor/sht3x')
         client.subscribe('clients/+/register')
-        client.subscribe(MQTT_SYS_TOPIC_CLIENTS_CONNECTED)
         
         client.loop_start()
         print("Cliente MQTT inicializado y suscrito a topicos de multiples clientes")
@@ -362,12 +336,3 @@ def cleanup():
         loop.call_soon_threadsafe(loop.stop)
         if loop_thread and loop_thread.is_alive():
             loop_thread.join(timeout=5)
-
-# Estado para rastrear clientes externos
-external_clients_connected = False
-
-# Callback cuando se desconecta del broker MQTT
-def on_disconnect(client, userdata, rc, properties=None):
-    global external_clients_connected
-    print(f"Desconectado del Broker MQTT con código: {rc}")
-    external_clients_connected = False # Resetear estado al desconectar
