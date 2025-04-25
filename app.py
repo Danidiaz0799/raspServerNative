@@ -6,18 +6,15 @@ from routes.sensor_routes import sensor_bp
 from routes.event_routes import event_bp
 from routes.actuator_routes import actuator_bp
 from routes.app_state_routes import app_state_bp
-from routes.statistics_routes import statistics_bp
-# La siguiente línea causa error porque ya no existe routes.msad_routes
-# from routes.msad_routes import msad_bp
 from mqtt_client import connect_mqtt, cleanup as mqtt_cleanup
 import os
 import threading
 from models.sensor_data import cleanup
 import atexit
 from database import create_tables
-# Integración con MSAD
+# Integracion con MSAD
 from msad import (
-    init_msad, shutdown_msad, 
+    init_msad, shutdown_msad,
     create_system_blueprint, create_backup_blueprint, create_report_blueprint
 )
 
@@ -48,8 +45,6 @@ app.register_blueprint(sensor_bp, url_prefix='/api')
 app.register_blueprint(event_bp, url_prefix='/api')
 app.register_blueprint(actuator_bp, url_prefix='/api')
 app.register_blueprint(app_state_bp, url_prefix='/api')
-app.register_blueprint(statistics_bp, url_prefix='/api')
-# app.register_blueprint(msad_bp, url_prefix='/api')  # Comentamos esta línea porque ya no existe msad_bp
 
 # Registramos los blueprints de MSAD de forma modular
 system_bp = create_system_blueprint()
@@ -114,17 +109,17 @@ if __name__ == '__main__':
     # Crear tablas de la base de datos si no existen
     print("Inicializando la base de datos...")
     create_tables()
-    
+
     # Iniciar cliente MQTT en un hilo separado para no bloquear
     mqtt_thread = threading.Thread(target=start_mqtt_client)
     mqtt_thread.daemon = True
     mqtt_thread.start()
-    
+
     # Iniciar Flask
     app.run(
-        host='0.0.0.0', 
-        port=5000, 
-        debug=DEBUG_MODE, 
+        host='0.0.0.0',
+        port=5000,
+        debug=DEBUG_MODE,
         threaded=THREADED,
         use_reloader=False
     )

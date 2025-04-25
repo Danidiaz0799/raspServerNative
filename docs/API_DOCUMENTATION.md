@@ -1,1115 +1,868 @@
-# Documentación de la API RESTful - Servidor de Cultivo
+# API RESTful RaspServer - Sistema de Cultivo Distribuido
 
-Esta API permite interactuar con el servidor Flask para monitorear y controlar el sistema de cultivo distribuido. Todos los endpoints están bajo el prefijo `/api`. La base para las URLs de ejemplo es `http://raspserver.local:5000`.
+## Información General
 
-## Autenticación
+- **Base URL:** `http://raspserver.local:5000/api`
+- **Formato de respuesta:** JSON
+- **Autenticación:** No requerida (En desarrollo para futuras versiones)
 
-Actualmente, la API no implementa un sistema de autenticación explícito.
+## Códigos de Estado HTTP
 
-## Formato de Respuesta
+| Código | Descripción |
+|--------|-------------|
+| 200 | OK - Operación exitosa |
+| 201 | Created - Recurso creado correctamente |
+| 400 | Bad Request - Error en los parámetros de la solicitud |
+| 404 | Not Found - Recurso no encontrado |
+| 500 | Internal Server Error - Error en el servidor |
 
-*   **Éxito:** Generalmente `200 OK` o `201 Created` con un cuerpo JSON que contiene los datos solicitados o un mensaje de éxito.
-*   **Error del Cliente:** `4xx` (ej. `400 Bad Request`, `404 Not Found`) con un cuerpo JSON describiendo el error: `{ "error": "Mensaje descriptivo" }`.
-*   **Error del Servidor:** `500 Internal Server Error` con un cuerpo JSON: `{ "error": "Mensaje de error interno" }`.
+## Índice de Endpoints
+
+1. [Clientes](#1-clientes)
+2. [Sensores](#2-sensores)
+3. [Parámetros Ideales](#3-parámetros-ideales)
+4. [Eventos](#4-eventos)
+5. [Actuadores](#5-actuadores)
+6. [Estado de la Aplicación](#6-estado-de-la-aplicación)
+7. [Estadísticas](#7-estadísticas)
+8. [MSAD - Módulo de Almacenamiento y Datos](#8-msad---módulo-de-almacenamiento-y-datos)
+   - [Estado](#81-estado)
+   - [Backups](#82-backups)
+   - [Reportes](#83-reportes)
 
 ---
 
-## Endpoints Principales
+## 1. Clientes
 
-### Clientes (`/clients`)
+Gestión de nodos de cultivo registrados en el sistema.
 
-Gestiona los dispositivos cliente (nodos de cultivo) registrados en el sistema.
+### Listar todos los clientes
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene una lista de todos los clientes registrados.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>Ninguno</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
+```
+GET http://raspserver.local:5000/api/clients
+```
 
+**Respuesta exitosa (200 OK):**
 ```json
 [
   {
-    "client_id": "...",
-    "name": "...",
-    "description": "...",
-    "status": "online/offline",
-    "last_seen": "..."
+    "client_id": "greenhouse-1",
+    "name": "Invernadero Principal",
+    "description": "Zona de cultivo #1",
+    "status": "online",
+    "last_seen": "2023-10-15T14:30:22Z"
   },
-  ...
-]
-```
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/clients</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Registra un nuevo cliente (nodo de cultivo).</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{
-  "client_id": "string",
-  "name": "string",
-  "description": "string (opcional)"
-}
-```
-*Requiere `client_id` y `name`.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (201 Created)</strong></td>
-<td>
-
-```json
-{ "message": "Cliente registrado correctamente" }
-```
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene los detalles de un cliente específico.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{
-  "client_id": "...",
-  "name": "...",
-  "description": "...",
-  "status": "...",
-  "last_seen": "..."
-}
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>PUT /api/clients/{client_id}/status</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Actualiza el estado de conexión de un cliente (online/offline). Actualiza `last_seen` al pasar a 'online'.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{ "status": "online" | "offline" }
-```
-*Requiere `status`.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Estado actualizado correctamente" }
-```
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>PUT /api/clients/{client_id}/info</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Actualiza la información (nombre y descripción) de un cliente existente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{
-  "name": "string",
-  "description": "string (opcional)"
-}
-```
-*Requiere `name`.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Informacion del cliente actualizada correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>DELETE /api/clients/{client_id}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Elimina un cliente y todos sus datos asociados. ¡Usar con precaución!</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Cliente y todos sus datos eliminados correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-### Sensores (`/clients/<client_id>/...`)
-
-Gestiona los datos de los sensores y los parámetros ideales por cliente.
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/Sht3xSensor</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene datos históricos del sensor SHT3x para un cliente, con paginación.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-[
   {
-    "id": integer,
-    "client_id": "...",
-    "timestamp": "...",
-    "temperature": float,
-    "humidity": float
-  },
-  ...
-]
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/Sht3xSensorManual</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene datos históricos del sensor SHT3x (propósito específico no claro, similar al anterior).</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-[ { "id": integer, ... }, ... ]
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/IdealParams/{param_type}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene los parámetros ideales (min/max) para un tipo específico (`temperature` o `humidity`) para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>• `client_id` (string)<br>• `param_type` (string: "temperature" | "humidity")</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{
-  "id": integer,
-  "client_id": "...",
-  "param_type": "...",
-  "min_value": float,
-  "max_value": float
-}
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente o los parámetros no existen.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>PUT /api/clients/{client_id}/IdealParams/{param_type}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Establece o actualiza los parámetros ideales (min/max) para un tipo específico y cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>• `client_id` (string)<br>• `param_type` (string: "temperature" | "humidity")</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{
-  "min_value": float,
-  "max_value": float
-}
-```
-*Requiere ambos.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Parametros ideales actualizados exitosamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-### Eventos (`/clients/<client_id>/Event`)
-
-Gestiona los eventos registrados por el sistema para un cliente.
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/Event</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene una lista paginada de eventos del sistema para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-[
-  {
-    "id": integer,
-    "client_id": "...",
-    "timestamp": "...",
-    "message": "...",
-    "topic": "..."
-  },
-  ...
-]
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/clients/{client_id}/Event</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Guarda un nuevo evento para un cliente (generalmente usado internamente).</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{
-  "message": "string",
-  "topic": "string"
-}
-```
-*Requiere ambos.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (201 Created)</strong></td>
-<td>
-
-```json
-{ "message": "Evento guardado correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/Event/FilterByTopic</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene eventos para un cliente filtrados por tópico MQTT, con paginación.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>• `topic` (string, **requerido**)<br>• `page` (integer, opcional, default=1)<br>• `pageSize` (integer, opcional, default=10)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-[ { "id": integer, ... }, ... ]
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error</strong></td>
-<td>• 400 Bad Request: Si falta `topic`.<br>• 404 Not Found: Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>DELETE /api/clients/{client_id}/Event/{id}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Elimina un evento específico por su ID numérico para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>• `client_id` (string)<br>• `id` (integer)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Evento eliminado correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error</strong></td>
-<td>• 404 Not Found: Si el cliente no existe.<br>• 500 Internal Server Error: Si el evento no existe o hay otro error.</td>
-</tr>
-</table>
-
-### Actuadores (`/clients/<client_id>/Actuator`)
-
-Gestiona el estado y control de los actuadores por cliente.
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/Actuator</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene el estado actual de todos los actuadores registrados para un cliente específico.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-[
-  {
-    "id": integer,
-    "client_id": "...",
-    "name": "...",
-    "state": ..., 
-    "last_changed": "..."
-  },
-  ...
-]
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/clients/{client_id}/Actuator</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Registra un nuevo actuador para un cliente con su estado inicial.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{
-  "name": "string",
-  "state": "string | integer | boolean"
-}
-```
-*Requiere ambos.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (201 Created)</strong></td>
-<td>
-
-```json
-{ "message": "Actuador agregado correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>PUT /api/clients/{client_id}/Actuator/{id}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Actualiza el estado de un actuador específico por su ID numérico para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>• `client_id` (string)<br>• `id` (integer)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{ "state": "string | integer | boolean" }
-```
-*Requiere `state`.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Estado del actuador actualizado correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/clients/{client_id}/Actuator/toggle_light</code><br>
-<code>POST /api/clients/{client_id}/Actuator/toggle_fan</code><br>
-<code>POST /api/clients/{client_id}/Actuator/toggle_humidifier</code><br>
-<code>POST /api/clients/{client_id}/Actuator/toggle_motor</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Envía un comando para cambiar el estado de un actuador específico (luz, ventilador, etc.) para un cliente. Publica un mensaje MQTT.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{ "state": "on" | "off" | boolean | number }
-```
-*Requiere `state`.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Senal enviada correctamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error</strong></td>
-<td>• 404 Not Found: Si el cliente no existe.<br>• 400 Bad Request: Si falta `state`.</td>
-</tr>
-</table>
-
-### Estado de la Aplicación (`/clients/<client_id>/...State`)
-
-Gestiona el modo de operación (automático/manual) por cliente.
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/getState</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene el modo de control actual para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "mode": "manual" | "automatico" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente o su estado no se encuentran.</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>PUT /api/clients/{client_id}/updateState</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Actualiza el modo de control para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{ "mode": "manual" | "automatico" }
-```
-*Requiere `mode`.*
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "message": "Estado de la aplicacion actualizado exitosamente" }
-```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error</strong></td>
-<td>• 400 Bad Request: Si el modo es inválido.<br>• 404 Not Found: Si el cliente no existe.</td>
-</tr>
-</table>
-
-### Estadísticas (`/clients/<client_id>/statistics`)
-
-Proporciona estadísticas calculadas sobre los datos.
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/statistics/dashboard</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene estadísticas agregadas (min, max, prom) de T/H para un cliente durante los últimos 'N' días.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>`days` (integer, opcional, default=7)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{
-  "sht3x_stats": {
-    "client_id": "...",
-    "period_days": integer,
-    "temperature": { "min": float | null, "max": float | null, "avg": float | null },
-    "humidity": { "min": float | null, "max": float | null, "avg": float | null },
-    "record_count": integer
+    "client_id": "greenhouse-2",
+    "name": "Invernadero Secundario",
+    "description": "Zona de cultivo #2",
+    "status": "offline",
+    "last_seen": "2023-10-14T18:45:10Z"
   }
+]
+```
+
+### Obtener un cliente específico
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "client_id": "greenhouse-1",
+  "name": "Invernadero Principal",
+  "description": "Zona de cultivo #1",
+  "status": "online",
+  "last_seen": "2023-10-15T14:30:22Z"
 }
 ```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Error (404 Not Found)</strong></td>
-<td>Si el cliente no existe.</td>
-</tr>
-</table>
+
+### Registrar un nuevo cliente
+
+```
+POST http://raspserver.local:5000/api/clients
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "client_id": "greenhouse-3",
+  "name": "Invernadero Experimental",
+  "description": "Zona de cultivo experimental"
+}
+```
+
+**Respuesta exitosa (201 Created):**
+```json
+{
+  "message": "Cliente registrado correctamente"
+}
+```
+
+### Actualizar estado de un cliente
+
+```
+PUT http://raspserver.local:5000/api/clients/{client_id}/status
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "status": "online"
+}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Estado actualizado correctamente"
+}
+```
+
+### Actualizar información de un cliente
+
+```
+PUT http://raspserver.local:5000/api/clients/{client_id}/info
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "name": "Nuevo nombre",
+  "description": "Nueva descripción"
+}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Información del cliente actualizada correctamente"
+}
+```
+
+### Eliminar un cliente
+
+```
+DELETE http://raspserver.local:5000/api/clients/{client_id}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Cliente y todos sus datos eliminados correctamente"
+}
+```
 
 ---
 
-## Endpoints MSAD (Módulo de Almacenamiento y Datos)
+## 2. Sensores
 
-Estos endpoints gestionan los backups y reportes del sistema. (Para detalles de respuesta, ver `MSAD_DETAILS.md`).
+Obtención y gestión de lecturas de sensores.
 
-### MSAD - Estado (`/msad/status`)
+### Obtener lecturas del sensor SHT3x (automático)
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/msad/status</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Verifica que el módulo MSAD integrado esté activo.</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/Sht3xSensor?page=1&pageSize=10
+```
 
+**Parámetros de consulta opcionales:**
+- `page`: Número de página (por defecto: 1)
+- `pageSize`: Cantidad de registros por página (por defecto: 10)
+
+**Respuesta exitosa (200 OK):**
+```json
+[
+  {
+    "id": 123,
+    "client_id": "greenhouse-1",
+    "timestamp": "2023-10-15T14:30:22Z",
+    "temperature": 22.5,
+    "humidity": 55.2
+  },
+  {
+    "id": 124,
+    "client_id": "greenhouse-1",
+    "timestamp": "2023-10-15T14:45:22Z",
+    "temperature": 22.7,
+    "humidity": 54.8
+  }
+]
+```
+
+### Obtener lecturas del sensor SHT3x (manual)
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/Sht3xSensorManual?page=1&pageSize=10
+```
+
+**Parámetros de consulta opcionales:**
+- `page`: Número de página (por defecto: 1)
+- `pageSize`: Cantidad de registros por página (por defecto: 10)
+
+**Respuesta exitosa (200 OK):**
+```json
+[
+  {
+    "id": 123,
+    "client_id": "greenhouse-1",
+    "timestamp": "2023-10-15T14:30:22Z",
+    "temperature": 22.5,
+    "humidity": 55.2
+  }
+]
+```
+
+---
+
+## 3. Parámetros Ideales
+
+Gestión de rangos óptimos para temperatura y humedad.
+
+### Obtener parámetros ideales
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/IdealParams/{param_type}
+```
+
+**Valores para `param_type`:**
+- `temperature`: Parámetros de temperatura
+- `humidity`: Parámetros de humedad
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "client_id": "greenhouse-1",
+  "param_type": "temperature",
+  "min_value": 20.0,
+  "max_value": 25.0
+}
+```
+
+### Actualizar parámetros ideales
+
+```
+PUT http://raspserver.local:5000/api/clients/{client_id}/IdealParams/{param_type}
+```
+
+**Valores para `param_type`:**
+- `temperature`: Parámetros de temperatura
+- `humidity`: Parámetros de humedad
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "min_value": 20.0,
+  "max_value": 25.0
+}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Parametros ideales actualizados exitosamente"
+}
+```
+
+---
+
+## 4. Eventos
+
+Gestión de eventos y alertas del sistema.
+
+### Listar eventos
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/Event?page=1&pageSize=10
+```
+
+**Parámetros de consulta opcionales:**
+- `page`: Número de página (por defecto: 1)
+- `pageSize`: Cantidad de registros por página (por defecto: 10)
+
+**Respuesta exitosa (200 OK):**
+```json
+[
+  {
+    "id": 45,
+    "client_id": "greenhouse-1",
+    "timestamp": "2023-10-15T14:30:22Z",
+    "type": "ALERT",
+    "message": "Humedad baja",
+    "topic": "humidity"
+  },
+  {
+    "id": 46,
+    "client_id": "greenhouse-1",
+    "timestamp": "2023-10-15T15:45:10Z",
+    "type": "INFO",
+    "message": "Ventilación activada",
+    "topic": "fan"
+  }
+]
+```
+
+### Registrar un evento
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/Event
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "message": "Temperatura alta detectada",
+  "topic": "temperature"
+}
+```
+
+**Respuesta exitosa (201 Created):**
+```json
+{
+  "message": "Evento guardado correctamente"
+}
+```
+
+### Filtrar eventos por tema
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/Event/FilterByTopic?topic=temperature&page=1&pageSize=10
+```
+
+**Parámetros de consulta:**
+- `topic`: Tema del evento a filtrar (requerido)
+- `page`: Número de página (por defecto: 1)
+- `pageSize`: Cantidad de registros por página (por defecto: 10)
+
+**Respuesta exitosa (200 OK):**
+```json
+[
+  {
+    "id": 47,
+    "client_id": "greenhouse-1",
+    "timestamp": "2023-10-15T16:30:22Z",
+    "type": "ALERT",
+    "message": "Temperatura alta detectada",
+    "topic": "temperature"
+  }
+]
+```
+
+### Eliminar un evento
+
+```
+DELETE http://raspserver.local:5000/api/clients/{client_id}/Event/{id}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Evento eliminado correctamente"
+}
+```
+
+---
+
+## 5. Actuadores
+
+Gestión de actuadores para el control del ambiente.
+
+### Listar todos los actuadores
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/Actuator
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "client_id": "greenhouse-1",
+    "name": "Iluminacion",
+    "state": "off",
+    "last_updated": "2023-10-15T14:30:22Z"
+  },
+  {
+    "id": 2,
+    "client_id": "greenhouse-1",
+    "name": "Ventilacion",
+    "state": "on",
+    "last_updated": "2023-10-15T15:45:10Z"
+  },
+  {
+    "id": 3,
+    "client_id": "greenhouse-1",
+    "name": "Humidificador",
+    "state": "off",
+    "last_updated": "2023-10-15T14:30:22Z"
+  },
+  {
+    "id": 4,
+    "client_id": "greenhouse-1",
+    "name": "Motor",
+    "state": "off",
+    "last_updated": "2023-10-15T14:30:22Z"
+  }
+]
+```
+
+### Encender/Apagar la luz
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/Actuator/toggle_light
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "state": "on"
+}
+```
+
+**Valores para `state`:**
+- `on`: Encender
+- `off`: Apagar
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Senal enviada correctamente"
+}
+```
+
+### Encender/Apagar el ventilador
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/Actuator/toggle_fan
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "state": "on"
+}
+```
+
+**Valores para `state`:**
+- `on`: Encender
+- `off`: Apagar
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Senal enviada correctamente"
+}
+```
+
+### Encender/Apagar el humidificador
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/Actuator/toggle_humidifier
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "state": "on"
+}
+```
+
+**Valores para `state`:**
+- `on`: Encender
+- `off`: Apagar
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Senal enviada correctamente"
+}
+```
+
+### Encender/Apagar el motor
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/Actuator/toggle_motor
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "state": "on"
+}
+```
+
+**Valores para `state`:**
+- `on`: Encender
+- `off`: Apagar
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Senal enviada correctamente"
+}
+```
+
+### Agregar un nuevo actuador
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/Actuator
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "name": "NuevoActuador",
+  "state": "off"
+}
+```
+
+**Respuesta exitosa (201 Created):**
+```json
+{
+  "message": "Actuador agregado correctamente"
+}
+```
+
+### Actualizar estado de un actuador
+
+```
+PUT http://raspserver.local:5000/api/clients/{client_id}/Actuator/{id}
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "state": "on"
+}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Estado del actuador actualizado correctamente"
+}
+```
+
+---
+
+## 6. Estado de la Aplicación
+
+Gestión del modo de operación (manual/automático).
+
+### Obtener estado actual
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/getState
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "mode": "automatico"
+}
+```
+
+### Actualizar estado
+
+```
+PUT http://raspserver.local:5000/api/clients/{client_id}/updateState
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "mode": "manual"
+}
+```
+
+**Valores para `mode`:**
+- `manual`: Modo manual
+- `automatico`: Modo automático
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "message": "Estado de la aplicacion actualizado exitosamente"
+}
+```
+
+---
+
+## 7. MSAD - Módulo de Almacenamiento y Datos
+
+### 7.1 Estado
+
+#### Verificar estado del servicio MSAD
+
+```
+GET http://raspserver.local:5000/api/msad/status
+```
+
+**Respuesta exitosa (200 OK):**
 ```json
 {
   "success": true,
   "service": "msad",
-  "version": "1.1.0", /* Puede variar */
+  "version": "1.1.0",
   "status": "running"
 }
 ```
-</td>
-</tr>
-</table>
 
-### MSAD - Backups (`/msad/backups`)
+### 7.2 Backups
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/msad/backups</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Lista todos los archivos de backup disponibles.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>`type` (string, opcional: "manual" | "auto")</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Objeto JSON con lista de backups (ver `MSAD_DETAILS.md`).</td>
-</tr>
-</table>
+#### Listar backups disponibles
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/msad/backups/create</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Crea un backup manual inmediato de `sensor_data.db`.</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Objeto JSON con detalles del backup creado (ver `MSAD_DETAILS.md`).</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/msad/backups/download/{filename}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Descarga el archivo de backup (`.db`) especificado.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`filename` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Archivo binario (`Content-Type: application/octet-stream`).</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>DELETE /api/msad/backups/{filename}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Elimina un archivo de backup específico.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`filename` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
-```json
-{ "success": true, "message": "Backup <filename> eliminado correctamente" }
 ```
-</td>
-</tr>
-</table>
+GET http://raspserver.local:5000/api/msad/backups
+```
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/msad/backups/restore/{filename}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Restaura `sensor_data.db` desde un backup. **¡Sobrescribe BD actual!**</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`filename` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
+**Parámetros de consulta opcionales:**
+- `type`: Filtrar por tipo de backup (`manual` o `auto`)
 
+**Respuesta exitosa (200 OK):**
 ```json
 {
   "success": true,
-  "message": "Backup <filename> restaurado correctamente",
-  "safety_backup": "<nombre_backup_seguridad.db>"
+  "backups": [
+    {
+      "filename": "backup_20231015_143022.zip",
+      "size": 1024567,
+      "date": "2023-10-15T14:30:22Z",
+      "type": "manual"
+    },
+    {
+      "filename": "backup_20231014_000000.zip",
+      "size": 952348,
+      "date": "2023-10-14T00:00:00Z",
+      "type": "auto"
+    }
+  ]
 }
 ```
-</td>
-</tr>
-</table>
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/msad/backups/scheduler</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Obtiene el estado del planificador de backups automáticos.</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Objeto JSON con estado del scheduler (ver `MSAD_DETAILS.md`).</td>
-</tr>
-</table>
+#### Crear backup manual
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/msad/backups/scheduler</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Configura el planificador de backups automáticos.</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON, opcional)</strong></td>
-<td>
-
-```json
-{
-  "enabled": boolean,
-  "interval_hours": integer
-}
 ```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
+POST http://raspserver.local:5000/api/msad/backups/create
+```
 
+**Respuesta exitosa (200 OK):**
 ```json
 {
   "success": true,
-  "message": "...",
-  "status": { ... estado actual ... }
+  "message": "Backup creado correctamente",
+  "filename": "backup_20231015_143022.zip",
+  "size": 1024567
 }
 ```
-</td>
-</tr>
-</table>
 
-### MSAD - Reportes (`/clients/<client_id>/msad/reports`, `/msad/reports`)
+#### Descargar un backup
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>POST /api/clients/{client_id}/msad/reports</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Genera un reporte de datos históricos para un cliente.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Cuerpo (JSON)</strong></td>
-<td>
-
-```json
-{
-  "start_date": "YYYY-MM-DD", /* Requerido */
-  "end_date": "YYYY-MM-DD",   /* Requerido */
-  "data_type": "sensors" | "events" | "actuators", /* Opcional */
-  "format": "json" | "csv"  /* Opcional */
-}
 ```
-</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Objeto JSON con metadatos del reporte (ver `MSAD_DETAILS.md`).</td>
-</tr>
-</table>
+GET http://raspserver.local:5000/api/msad/backups/download/{filename}
+```
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/msad/reports</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Lista los reportes generados para un cliente específico.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>`client_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>• `format` (string, opcional)<br>• `data_type` (string, opcional)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Objeto JSON con lista de reportes (ver `MSAD_DETAILS.md`).</td>
-</tr>
-</table>
+**Respuesta exitosa:** Archivo binario (descarga)
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/msad/reports</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Lista todos los reportes generados para todos los clientes.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Query</strong></td>
-<td>• `format` (string, opcional)<br>• `data_type` (string, opcional)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Objeto JSON con lista de reportes (igual estructura que el anterior).</td>
-</tr>
-</table>
+#### Eliminar un backup
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>GET /api/clients/{client_id}/msad/reports/download/{filename}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Descarga un archivo de reporte generado específico.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>• `client_id` (string)<br>• `filename` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>Archivo JSON o CSV (`Content-Type: application/json` o `text/csv`).</td>
-</tr>
-</table>
+```
+DELETE http://raspserver.local:5000/api/msad/backups/{filename}
+```
 
-<table>
-<tr>
-<td><strong>Endpoint</strong></td>
-<td><code>DELETE /api/clients/{client_id}/msad/reports/{report_id}</code></td>
-</tr>
-<tr>
-<td><strong>Descripción</strong></td>
-<td>Elimina un archivo de reporte específico usando el `report_id`.</td>
-</tr>
-<tr>
-<td><strong>Parámetros Path</strong></td>
-<td>• `client_id` (string)<br>• `report_id` (string)</td>
-</tr>
-<tr>
-<td><strong>Respuesta Éxito (200 OK)</strong></td>
-<td>
-
+**Respuesta exitosa (200 OK):**
 ```json
 {
   "success": true,
-  "message": "Reporte eliminado",
-  "report_id": "...",
-  "filename": "...",
-  "client_id": "..."
+  "message": "Backup eliminado correctamente",
+  "filename": "backup_20231015_143022.zip"
 }
 ```
-</td>
-</tr>
-</table> 
+
+#### Restaurar un backup
+
+```
+POST http://raspserver.local:5000/api/msad/backups/restore/{filename}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Backup restaurado correctamente",
+  "filename": "backup_20231015_143022.zip"
+}
+```
+
+#### Obtener estado del programador de backups
+
+```
+GET http://raspserver.local:5000/api/msad/backups/scheduler
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "enabled": true,
+  "interval_hours": 24,
+  "next_backup": "2023-10-16T00:00:00Z",
+  "last_backup": "2023-10-15T00:00:00Z"
+}
+```
+
+#### Configurar programador de backups
+
+```
+POST http://raspserver.local:5000/api/msad/backups/scheduler
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "enabled": true,
+  "interval_hours": 12
+}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Programador de backups iniciado con intervalo de 12 horas",
+  "status": {
+    "enabled": true,
+    "interval_hours": 12,
+    "next_backup": "2023-10-15T19:30:00Z",
+    "last_backup": "2023-10-15T07:30:00Z"
+  }
+}
+```
+
+### 7.3 Reportes
+
+#### Generar un reporte
+
+```
+POST http://raspserver.local:5000/api/clients/{client_id}/msad/reports
+```
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "start_date": "2023-10-01",
+  "end_date": "2023-10-15",
+  "data_type": "sensors",
+  "format": "csv"
+}
+```
+
+**Valores para `data_type`:**
+- `sensors`: Datos de sensores
+- `events`: Datos de eventos
+- `all`: Todos los datos
+
+**Valores para `format`:**
+- `csv`: Formato CSV
+- `json`: Formato JSON
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Reporte generado correctamente",
+  "file_id": "report_greenhouse1_sensors_20231015_1430.csv",
+  "download_url": "/api/clients/greenhouse-1/msad/reports/download/report_greenhouse1_sensors_20231015_1430.csv"
+}
+```
+
+#### Listar reportes de un cliente
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/msad/reports
+```
+
+**Parámetros de consulta opcionales:**
+- `format`: Filtrar por formato (`csv` o `json`)
+- `data_type`: Filtrar por tipo de datos (`sensors`, `events`, `all`)
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "reports": [
+    {
+      "file_id": "report_greenhouse1_sensors_20231015_1430.csv",
+      "size": 25678,
+      "date": "2023-10-15T14:30:22Z",
+      "client_id": "greenhouse-1",
+      "data_type": "sensors",
+      "format": "csv",
+      "download_url": "/api/clients/greenhouse-1/msad/reports/download/report_greenhouse1_sensors_20231015_1430.csv"
+    }
+  ]
+}
+```
+
+#### Listar todos los reportes
+
+```
+GET http://raspserver.local:5000/api/msad/reports
+```
+
+**Parámetros de consulta opcionales:**
+- `format`: Filtrar por formato (`csv` o `json`)
+- `data_type`: Filtrar por tipo de datos (`sensors`, `events`, `all`)
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "reports": [
+    {
+      "file_id": "report_greenhouse1_sensors_20231015_1430.csv",
+      "size": 25678,
+      "date": "2023-10-15T14:30:22Z",
+      "client_id": "greenhouse-1",
+      "data_type": "sensors",
+      "format": "csv",
+      "download_url": "/api/clients/greenhouse-1/msad/reports/download/report_greenhouse1_sensors_20231015_1430.csv"
+    },
+    {
+      "file_id": "report_greenhouse2_events_20231014_1030.json",
+      "size": 15342,
+      "date": "2023-10-14T10:30:15Z",
+      "client_id": "greenhouse-2",
+      "data_type": "events",
+      "format": "json",
+      "download_url": "/api/clients/greenhouse-2/msad/reports/download/report_greenhouse2_events_20231014_1030.json"
+    }
+  ]
+}
+```
+
+#### Descargar un reporte
+
+```
+GET http://raspserver.local:5000/api/clients/{client_id}/msad/reports/download/{filename}
+```
+
+**Respuesta exitosa:** Archivo CSV o JSON (descarga)
+
+#### Eliminar un reporte
+
+```
+DELETE http://raspserver.local:5000/api/clients/{client_id}/msad/reports/{report_id}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Reporte eliminado correctamente",
+  "report_id": "report_greenhouse1_sensors_20231015_1430.csv",
+  "client_id": "greenhouse-1"
+}
+```

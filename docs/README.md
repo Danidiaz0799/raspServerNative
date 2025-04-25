@@ -105,7 +105,6 @@ El sistema sigue una arquitectura cliente-servidor distribuida:
 │   ├── client.py           # Modelo para Clientes MQTT
 │   ├── event.py            # Modelo para Eventos
 │   ├── sensor_data.py      # Modelo para Datos de Sensores y Parámetros Ideales
-│   └── statistics.py       # Modelo para Estadísticas
 ├── routes/                 # Blueprints Flask para las rutas de la API principal
 │   ├── __init__.py
 │   ├── actuator_routes.py
@@ -113,7 +112,6 @@ El sistema sigue una arquitectura cliente-servidor distribuida:
 │   ├── client_routes.py
 │   ├── event_routes.py
 │   ├── sensor_routes.py
-│   └── statistics_routes.py
 ├── msad/                   # Módulo MSAD (Microservicio de Almacenamiento y Datos)
 │   ├── __init__.py         # Inicialización, funciones públicas y registro de blueprints MSAD
 │   ├── api/                # Blueprints y lógica de las rutas API específicas de MSAD
