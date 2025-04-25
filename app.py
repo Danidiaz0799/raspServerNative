@@ -11,7 +11,6 @@ import os
 import threading
 from models.sensor_data import cleanup
 import atexit
-from database import create_tables
 # Integracion con MSAD
 from msad import (
     init_msad, shutdown_msad,
@@ -22,7 +21,7 @@ from msad import (
 ANGULAR_BUILD_FOLDER = "/home/stevpi/Desktop/raspServer/angular_app/dist/mushroom-automation"
 
 # Configuraciones para optimizacion
-DEBUG_MODE = False  # Cambiar a True solo para desarrollo
+DEBUG_MODE = True  # Cambiar a True solo para desarrollo
 THREADED = True
 
 # Crear la aplicacion Flask
@@ -106,10 +105,6 @@ atexit.register(on_exit)
 
 # Iniciar la aplicacion
 if __name__ == '__main__':
-    # Crear tablas de la base de datos si no existen
-    print("Inicializando la base de datos...")
-    create_tables()
-
     # Iniciar cliente MQTT en un hilo separado para no bloquear
     mqtt_thread = threading.Thread(target=start_mqtt_client)
     mqtt_thread.daemon = True
