@@ -17,8 +17,8 @@ from msad import (
     create_system_blueprint, create_backup_blueprint, create_report_blueprint
 )
 
-# Configuracion de la carpeta donde esta la app Angular
-ANGULAR_BUILD_FOLDER = "/home/stevpi/Desktop/raspServer/angular_app/dist/mushroom-automation"
+# Configuracion de la carpeta donde esta la app Angular - usando ruta relativa
+ANGULAR_BUILD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "angular_app", "dist", "mushroom-automation")
 
 # Configuraciones para optimizacion
 DEBUG_MODE = True  # Cambiar a True solo para desarrollo

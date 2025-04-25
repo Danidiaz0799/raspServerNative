@@ -10,10 +10,8 @@ IS_WINDOWS = platform.system() == "Windows"
 # Paths base
 def get_base_dir():
     """Obtener directorio base"""
-    if IS_WINDOWS:
-        return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    else:
-        return "/home/stevpi/Desktop/raspServer"
+    # Usar siempre la raíz del proyecto
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def get_msad_dir():
     """Obtener directorio de MSAD"""
@@ -21,14 +19,12 @@ def get_msad_dir():
 
 def get_storage_dir():
     """Obtener directorio de almacenamiento"""
-    if IS_WINDOWS:
-        return os.path.join(get_base_dir(), "storage", "msad")
-    else:
-        return "/mnt/storage/msad"
+    # Usamos un directorio 'storage' en la raíz del proyecto
+    return os.path.join(get_base_dir(), "storage")
 
 def get_log_dir():
     """Obtener directorio de logs"""
-    return os.path.join(get_msad_dir(), "logs")
+    return os.path.join(get_storage_dir(), "logs")
 
 def get_config_dir():
     """Obtener directorio de configuración"""
@@ -83,4 +79,4 @@ def ensure_directories():
     os.makedirs(exports_dir, exist_ok=True)
     
     # Nota: Ya no creamos subdirectorios fijos para exportaciones
-    # Los directorios específicos por cliente se crearán dinámicamente 
+    # Los directorios específicos por cliente se crearán dinámicamente

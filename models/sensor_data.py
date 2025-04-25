@@ -1,18 +1,21 @@
 import aiosqlite
+import os
 from datetime import datetime
 import time
 import asyncio
 import functools
 from typing import Dict, Any, Optional, List, Tuple
 
-# Caché para parámetros ideales
+# Cachï¿½ para parï¿½metros ideales
 _ideal_params_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
 _cache_expiry: Dict[Tuple[str, str], float] = {}
-CACHE_DURATION = 60  # Duración de la caché en segundos
+CACHE_DURATION = 60  # Duraciï¿½n de la cachï¿½ en segundos
 
 # Conectar a la base de datos
 async def get_db_connection():
-    conn = await aiosqlite.connect('/home/stevpi/Desktop/raspServer/sensor_data.db')
+    # Usar una ruta relativa a la ubicaciÃ³n del script
+    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'sensor_data.db')
+    conn = await aiosqlite.connect(db_path)
     conn.row_factory = aiosqlite.Row
     return conn
 
@@ -45,7 +48,7 @@ async def execute_write_query_with_retry(query, params=(), retries=5, delay=1):
             else:
                 raise
 
-# Función para agrupar múltiples inserciones
+# Funciï¿½n para agrupar mï¿½ltiples inserciones
 async def batch_insert_sht3x_data(data_list):
     if not data_list:
         return
@@ -60,7 +63,7 @@ async def batch_insert_sht3x_data(data_list):
     finally:
         await conn.close()
 
-# Buffer para acumular datos antes de inserción
+# Buffer para acumular datos antes de inserciï¿½n
 _sht3x_buffer: List[Tuple[str, str, float, float]] = []
 _last_flush_time = time.time()
 MAX_BUFFER_SIZE = 10
@@ -97,12 +100,12 @@ async def get_all_sht3x_data(client_id, page, page_size):
     result = await execute_query_with_retry(query, params)
     return result
 
-# Obtener parametros ideales desde la base de datos (con caché)
+# Obtener parametros ideales desde la base de datos (con cachï¿½)
 async def get_ideal_params(client_id, param_type):
     cache_key = (client_id, param_type)
     current_time = time.time()
     
-    # Verificar si los datos están en caché y son válidos
+    # Verificar si los datos estï¿½n en cachï¿½ y son vï¿½lidos
     if cache_key in _ideal_params_cache and current_time < _cache_expiry.get(cache_key, 0):
         return _ideal_params_cache[cache_key]
     
@@ -116,13 +119,13 @@ async def get_ideal_params(client_id, param_type):
     result = await execute_query_with_retry(query, params)
     
     if result:
-        # Guardar en caché
+        # Guardar en cachï¿½ 
         _ideal_params_cache[cache_key] = dict(result[0])
         _cache_expiry[cache_key] = current_time + CACHE_DURATION
         return _ideal_params_cache[cache_key]
     return None
 
-# Actualizar parametros ideales en la base de datos (y caché)
+# Actualizar parametros ideales en la base de datos (y cachï¿½)
 async def update_ideal_params(client_id, param_type, min_value, max_value):
     # Actualizar en la base de datos
     query = '''
@@ -134,7 +137,7 @@ async def update_ideal_params(client_id, param_type, min_value, max_value):
     params = (min_value, max_value, timestamp, client_id, param_type)
     await execute_write_query_with_retry(query, params)
     
-    # Actualizar caché
+    # Actualizar cachï¿½ 
     cache_key = (client_id, param_type)
     _ideal_params_cache[cache_key] = {
         'client_id': client_id,

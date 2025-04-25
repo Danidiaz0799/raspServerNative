@@ -6,10 +6,9 @@ import logging
 import datetime
 import sqlite3
 
-# Configuración básica
-STORAGE_PATH = "/mnt/storage/msad"
-if os.name == 'nt':  # Windows (para desarrollo)
-    STORAGE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "storage", "msad")
+# Configuración básica - cambiamos la ruta a una carpeta 'storage' en la raíz del proyecto
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+STORAGE_PATH = os.path.join(project_root, "storage")  # Ahora apunta a la carpeta 'storage'
 
 # Configurar logging
 def setup_logging():
@@ -31,7 +30,7 @@ def get_database_path():
     if os.name == 'nt':  # Windows
         return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "sensor_data.db")
     else:  # Linux
-        return "/home/stevpi/Desktop/raspServer/sensor_data.db"
+        return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "sensor_data.db")
 
 def ensure_directories():
     """Crear estructura de directorios necesaria"""
