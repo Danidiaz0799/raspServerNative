@@ -3,7 +3,8 @@ Report routes module for MSAD - Data reporting and export endpoints
 """
 from flask import Blueprint, jsonify, request, send_file
 from msad.core.system import logger
-from msad.core.reports import generate_report, list_reports, get_report_file
+from msad.core.reports import generate_report, list_reports, get_report_file, start_report_scheduler, stop_report_scheduler, get_report_scheduler_status
+
 import os
 
 def create_report_blueprint():
@@ -176,4 +177,50 @@ def create_report_blueprint():
                 "error": str(e)
             }), 500
             
-    return report_bp 
+    # --- ENDPOINTS DE PROGRAMADOR DE REPORTES ---
+    
+    @report_bp.route('/msad/reports/scheduler/start', methods=['POST'])
+    def start_report_scheduler_endpoint():
+        """
+        Inicia o reinicia el programador de reportes automáticos.
+        Cuerpo JSON opcional con parámetros:
+        - interval_hours: int
+        - client_id: str
+        - start_date: str (YYYY-MM-DD)
+        - end_date: str (YYYY-MM-DD)
+        - data_type: str (sensors, events, actuators)
+        - format: str (json, csv)
+        """
+        try:
+            config = request.json if request.is_json else None
+            start_report_scheduler(config)
+            return jsonify({"success": True, "message": "Programador de reportes iniciado", "config": config}), 200
+        except Exception as e:
+            logger.error(f"Error al iniciar programador de reportes: {str(e)}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @report_bp.route('/msad/reports/scheduler/stop', methods=['POST'])
+    def stop_report_scheduler_endpoint():
+        """
+        Detiene el programador de reportes automáticos.
+        """
+        try:
+            stop_report_scheduler()
+            return jsonify({"success": True, "message": "Programador de reportes detenido"}), 200
+        except Exception as e:
+            logger.error(f"Error al detener programador de reportes: {str(e)}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @report_bp.route('/msad/reports/scheduler/status', methods=['GET'])
+    def get_report_scheduler_status_endpoint():
+        """
+        Obtiene el estado actual del programador de reportes.
+        """
+        try:
+            status = get_report_scheduler_status()
+            return jsonify(status), 200
+        except Exception as e:
+            logger.error(f"Error al obtener estado del programador de reportes: {str(e)}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    return report_bp
