@@ -13,10 +13,12 @@ CACHE_DURATION = 60  # Duraci�n de la cach� en segundos
 
 # Conectar a la base de datos
 async def get_db_connection():
-    # Usar una ruta relativa a la ubicación del script
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'sensor_data.db')
-    conn = await aiosqlite.connect(db_path)
+    conn = await aiosqlite.connect(db_path, timeout=30)
+    await conn.execute('PRAGMA journal_mode=WAL;')
+    await conn.execute('PRAGMA synchronous=NORMAL;')
     conn.row_factory = aiosqlite.Row
+    await conn.commit()
     return conn
 
 async def execute_query_with_retry(query, params=(), retries=5, delay=1):
