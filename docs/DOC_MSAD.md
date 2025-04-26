@@ -76,9 +76,14 @@ El módulo MSAD está diseñado como un componente integrado en la aplicación F
 
 #### Características
 
-- **Backups automáticos**: Programados a intervalos configurables
+- **Backups automáticos**: Programados a intervalos configurables mediante el parámetro `interval_hours` vía API
 - **Backups manuales**: Bajo demanda a través de la API
 - **Rotación**: Conserva un número máximo de backups, eliminando los más antiguos
+- **Filtrado flexible**: El endpoint `/api/msad/backups` permite filtrar por tipo de backup usando el parámetro `type`.
+    - Valores válidos: `manual` (solo manuales), `auto` (solo automáticos), `scheduled` (alias de `auto` para compatibilidad frontend).
+    - Ejemplo: `/api/msad/backups?type=manual` retorna solo backups manuales.
+    - El campo `type` en la respuesta será siempre `manual` o `auto`.
+- **Estado enriquecido**: El endpoint de estado y configuración del programador de backups ahora incluye el campo `interval_hours`, y las fechas de último y próximo backup son consistentes y reflejan el estado real del sistema.
 - **Verificación de integridad**: Comprueba que la base de datos no esté corrupta
 - **Restauración segura**: Crea un backup de seguridad antes de restaurar
 

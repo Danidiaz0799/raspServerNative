@@ -607,19 +607,26 @@ GET http://raspserver.local:5000/api/msad/status
   "service": "msad",
   "version": "1.1.0",
   "status": "running"
-}
-```
-
 ### 7.2 Backups
 
-#### Listar backups disponibles
+#### Listar todos los backups
 
 ```
 GET http://raspserver.local:5000/api/msad/backups
 ```
 
 **Parámetros de consulta opcionales:**
-- `type`: Filtrar por tipo de backup (`manual` o `auto`)
+- `type`: Filtrar por tipo de backup (`manual`, `auto`, `scheduled`)
+
+**Nota:** El campo `type` en la respuesta será siempre `manual` o `auto`. El parámetro `scheduled` es un alias de `auto` para compatibilidad con el frontend.
+
+**Ejemplos de uso:**
+```
+GET /api/msad/backups?type=manual      # Solo backups manuales
+GET /api/msad/backups?type=auto        # Solo backups automáticos
+GET /api/msad/backups?type=scheduled   # Solo backups automáticos (alias)
+GET /api/msad/backups                  # Todos los backups
+```
 
 **Respuesta exitosa (200 OK):**
 ```json
@@ -706,10 +713,14 @@ GET http://raspserver.local:5000/api/msad/backups/scheduler
 ```json
 {
   "success": true,
-  "enabled": true,
-  "interval_hours": 24,
-  "next_backup": "2023-10-16T00:00:00Z",
-  "last_backup": "2023-10-15T00:00:00Z"
+  "is_running": true,
+  "interval_hours": 3,
+  "backup_count": 2,
+  "total_size": 204800,
+  "formatted_size": "200.00 KB",
+  "last_backup": "2025-04-26T05:01:05",
+  "next_backup": "2025-04-26T08:01:05",
+  "backup_dir": "/ruta/a/backups"
 }
 ```
 
@@ -723,7 +734,7 @@ POST http://raspserver.local:5000/api/msad/backups/scheduler
 ```json
 {
   "enabled": true,
-  "interval_hours": 12
+  "interval_hours": 3
 }
 ```
 
@@ -731,12 +742,17 @@ POST http://raspserver.local:5000/api/msad/backups/scheduler
 ```json
 {
   "success": true,
-  "message": "Programador de backups iniciado con intervalo de 12 horas",
+  "message": "Backup scheduler started with interval of 3 hours",
   "status": {
-    "enabled": true,
-    "interval_hours": 12,
-    "next_backup": "2023-10-15T19:30:00Z",
-    "last_backup": "2023-10-15T07:30:00Z"
+    "success": true,
+    "is_running": true,
+    "interval_hours": 3,
+    "backup_count": 2,
+    "total_size": 204800,
+    "formatted_size": "200.00 KB",
+    "last_backup": "2025-04-26T05:01:05",
+    "next_backup": "2025-04-26T08:01:05",
+    "backup_dir": "/ruta/a/backups"
   }
 }
 ```
