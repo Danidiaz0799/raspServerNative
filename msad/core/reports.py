@@ -9,19 +9,16 @@ from msad.core.system import logger, STORAGE_PATH, execute_query
 import threading
 import schedule
 
-# --- Configuración global para el programador de reportes ---
-REPORT_SCHEDULER_THREAD = None
-REPORT_SCHEDULER_RUNNING = False
-REPORT_SCHEDULER_CONFIG = {
-    'interval_hours': 24,
-    'client_id': None,
-    'start_date': None,
-    'end_date': None,
-    'data_type': 'sensors',
-    'format': 'json',
-}
-REPORT_SCHEDULER_LAST_RUN = None
-REPORT_SCHEDULER_NEXT_RUN = None
+# --- Configuración global para el programador de reportes por cliente ---
+REPORT_SCHEDULERS = {}
+# Estructura de cada entrada:
+# {
+#   'thread': threading.Thread,
+#   'running': bool,
+#   'config': dict,
+#   'last_run': str,
+#   'next_run': str
+# }
 
 def generate_report(client_id, start_date, end_date, data_type="sensors", format="json"):
     """
@@ -217,81 +214,110 @@ def list_reports(client_id=None, format=None, data_type=None):
         return {"success": False, "error": str(e)}
 
 # --- Scheduler Functions ---
-def start_report_scheduler(config=None):
+import time
+import datetime
+
+def start_report_scheduler_for_client(client_id, config):
     """
-    Inicia o reinicia el programador de reportes automáticos con la configuración dada.
-    config: dict con las llaves 'interval_hours', 'client_id', 'start_date', 'end_date', 'data_type', 'format'
+    Inicia o reinicia el programador de reportes automáticos para un cliente específico.
+    config: dict con las llaves 'interval_hours', 'start_date', 'end_date', 'data_type', 'format'
     """
-    global REPORT_SCHEDULER_THREAD, REPORT_SCHEDULER_RUNNING, REPORT_SCHEDULER_CONFIG, REPORT_SCHEDULER_LAST_RUN, REPORT_SCHEDULER_NEXT_RUN
-    import datetime
-    import time
-    stop_report_scheduler()  # Detener cualquier scheduler previo
-    schedule.clear('report')
-    if config:
-        REPORT_SCHEDULER_CONFIG.update(config)
-    interval = REPORT_SCHEDULER_CONFIG.get('interval_hours', 24)
+    global REPORT_SCHEDULERS
+    stop_report_scheduler_for_client(client_id)  # Detener cualquier scheduler previo para este cliente
+    interval = config.get('interval_hours', 24)
     if not interval or interval <= 0:
         interval = 24
-        REPORT_SCHEDULER_CONFIG['interval_hours'] = 24
+        config['interval_hours'] = 24
     def report_job():
-        global REPORT_SCHEDULER_LAST_RUN
-        logger.info(f"[Scheduler] Generando reporte automático con configuración: {REPORT_SCHEDULER_CONFIG}")
+        logger.info(f"[Scheduler:{client_id}] Generando reporte automático con configuración: {config}")
         try:
             res = generate_report(
-                REPORT_SCHEDULER_CONFIG['client_id'],
-                REPORT_SCHEDULER_CONFIG['start_date'],
-                REPORT_SCHEDULER_CONFIG['end_date'],
-                REPORT_SCHEDULER_CONFIG['data_type'],
-                REPORT_SCHEDULER_CONFIG['format']
+                client_id,
+                config['start_date'],
+                config['end_date'],
+                config.get('data_type', 'sensors'),
+                config.get('format', 'json')
             )
             if res.get('success'):
-                logger.info(f"[Scheduler] Reporte generado correctamente: {res.get('filename')}")
+                logger.info(f"[Scheduler:{client_id}] Reporte generado correctamente: {res.get('filename')}")
             else:
-                logger.warning(f"[Scheduler] Error al generar reporte: {res.get('error')}")
+                logger.warning(f"[Scheduler:{client_id}] Error al generar reporte: {res.get('error')}")
         except Exception as e:
-            logger.error(f"[Scheduler] Excepción al generar reporte: {str(e)}")
-        REPORT_SCHEDULER_LAST_RUN = datetime.datetime.now().isoformat()
-        # Calcular próxima ejecución
-        global REPORT_SCHEDULER_NEXT_RUN
-        REPORT_SCHEDULER_NEXT_RUN = (datetime.datetime.now() + datetime.timedelta(hours=interval)).isoformat()
-    schedule.every(interval).hours.do(report_job).tag('report')
-    REPORT_SCHEDULER_NEXT_RUN = (datetime.datetime.now() + datetime.timedelta(hours=interval)).isoformat()
+            logger.error(f"[Scheduler:{client_id}] Excepción al generar reporte: {str(e)}")
+        REPORT_SCHEDULERS[client_id]['last_run'] = datetime.datetime.now().isoformat()
+        REPORT_SCHEDULERS[client_id]['next_run'] = (datetime.datetime.now() + datetime.timedelta(hours=interval)).isoformat()
+    # Programar el job
+    job = schedule.every(interval).hours.do(report_job).tag(f'report_{client_id}')
+    next_run = (datetime.datetime.now() + datetime.timedelta(hours=interval)).isoformat()
     def run_scheduler():
-        global REPORT_SCHEDULER_RUNNING
-        REPORT_SCHEDULER_RUNNING = True
-        logger.info("[Scheduler] Iniciando programador de reportes")
-        # La librería schedule estándar no soporta tags en run_pending; solo ejecuta todos los jobs pendientes.
-        while REPORT_SCHEDULER_RUNNING:
+        REPORT_SCHEDULERS[client_id]['running'] = True
+        logger.info(f"[Scheduler:{client_id}] Iniciando programador de reportes")
+        while True:
+            # Verifica que el scheduler siga registrado y activo
+            if client_id not in REPORT_SCHEDULERS or not REPORT_SCHEDULERS[client_id]['running']:
+                logger.info(f"[Scheduler:{client_id}] Scheduler eliminado o detenido, saliendo del hilo")
+                break
             schedule.run_pending()
             time.sleep(60)
-        logger.info("[Scheduler] Programador de reportes detenido")
-    REPORT_SCHEDULER_THREAD = threading.Thread(target=run_scheduler, daemon=True)
-    REPORT_SCHEDULER_THREAD.start()
+        logger.info(f"[Scheduler:{client_id}] Programador de reportes detenido")
+    thread = threading.Thread(target=run_scheduler, daemon=True)
+    REPORT_SCHEDULERS[client_id] = {
+        'thread': thread,
+        'running': True,
+        'config': config.copy(),
+        'last_run': None,
+        'next_run': next_run
+    }
+    thread.start()
     return True
 
-def stop_report_scheduler():
-    """Detiene el programador de reportes automáticos"""
-    global REPORT_SCHEDULER_RUNNING, REPORT_SCHEDULER_THREAD
-    if not REPORT_SCHEDULER_RUNNING:
-        logger.warning("[Scheduler] El programador de reportes no está en ejecución")
+def stop_report_scheduler_for_client(client_id):
+    """
+    Detiene el programador de reportes automáticos para un cliente específico
+    """
+    global REPORT_SCHEDULERS
+    if client_id not in REPORT_SCHEDULERS or not REPORT_SCHEDULERS[client_id]['running']:
+        logger.warning(f"[Scheduler:{client_id}] El programador de reportes no está en ejecución")
         return True
-    REPORT_SCHEDULER_RUNNING = False
-    schedule.clear('report')
-    if REPORT_SCHEDULER_THREAD and REPORT_SCHEDULER_THREAD.is_alive():
-        REPORT_SCHEDULER_THREAD.join(timeout=5)
-    logger.info("[Scheduler] Programador de reportes detenido")
+    REPORT_SCHEDULERS[client_id]['running'] = False
+    schedule.clear(f'report_{client_id}')
+    thread = REPORT_SCHEDULERS[client_id]['thread']
+    if thread and thread.is_alive():
+        thread.join(timeout=5)
+    logger.info(f"[Scheduler:{client_id}] Programador de reportes detenido")
+    del REPORT_SCHEDULERS[client_id]
     return True
 
-def get_report_scheduler_status():
-    """Obtiene el estado actual del programador de reportes"""
-    global REPORT_SCHEDULER_RUNNING, REPORT_SCHEDULER_CONFIG, REPORT_SCHEDULER_LAST_RUN, REPORT_SCHEDULER_NEXT_RUN
+def get_report_scheduler_status_for_client(client_id):
+    """
+    Obtiene el estado actual del programador de reportes para un cliente específico
+    """
+    global REPORT_SCHEDULERS
+    if client_id not in REPORT_SCHEDULERS:
+        return {'success': False, 'error': 'No hay scheduler activo para este cliente'}
+    sched = REPORT_SCHEDULERS[client_id]
     return {
         'success': True,
-        'is_running': REPORT_SCHEDULER_RUNNING,
-        'config': REPORT_SCHEDULER_CONFIG.copy(),
-        'last_run': REPORT_SCHEDULER_LAST_RUN,
-        'next_run': REPORT_SCHEDULER_NEXT_RUN,
+        'is_running': sched['running'],
+        'config': sched['config'].copy(),
+        'last_run': sched['last_run'],
+        'next_run': sched['next_run'],
     }
+
+def get_all_report_schedulers_status():
+    """
+    Devuelve el estado de todos los schedulers activos
+    """
+    global REPORT_SCHEDULERS
+    status = {}
+    for client_id, sched in REPORT_SCHEDULERS.items():
+        status[client_id] = {
+            'is_running': sched['running'],
+            'config': sched['config'].copy(),
+            'last_run': sched['last_run'],
+            'next_run': sched['next_run'],
+        }
+    return {'success': True, 'schedulers': status}
 
 def get_report_file(client_id, filename_or_id):
     """

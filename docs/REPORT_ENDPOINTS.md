@@ -2,58 +2,10 @@
 
 ---
 
-## Resumen
+**POST** http://192.168.184.223:5000/api/clients/<client_id>/msad/reports
 
-Esta API permite la generación, consulta, descarga, eliminación y programación automática de reportes de datos para clientes, alineada con la estructura real de la base de datos y el sistema de archivos. Todos los endpoints implementan validaciones estrictas y manejo robusto de errores. Las respuestas son informativas y claras ante cualquier situación.
-
----
-
-## 1. Crear un reporte de datos
-
-**POST** `/api/clients/<client_id>/msad/reports`
-
-Crea un reporte de datos para un cliente, en formato JSON o CSV, para un rango de fechas y tipo de datos.
-
-### Parámetros requeridos y validaciones
-- `client_id` (en la URL): string, obligatorio. Debe existir en la base de datos.
-- `start_date`: string, obligatorio. Formato `YYYY-MM-DD`.
-- `end_date`: string, obligatorio. Formato `YYYY-MM-DD`.
-- `data_type`: string, opcional. Uno de: `sensors`, `events`, `actuators` (por defecto: `sensors`).
-- `format`: string, opcional. Uno de: `json`, `csv` (por defecto: `json`).
-
-### Validaciones y errores comunes
-- Si falta algún parámetro requerido, la respuesta será:
-```json
-{
-  "success": false,
-  "error": "<mensaje explicativo>"
-}
-```
-- Si el formato de fecha es incorrecto:
-```json
-{
-  "success": false,
-  "error": "Formato de fecha incorrecto. Use YYYY-MM-DD"
-}
-```
-- Si no hay datos para el cliente o el rango:
-```json
-{
-  "success": false,
-  "error": "No se encontraron datos para el rango especificado"
-}
-```
-- Si ocurre un error de sistema (por ejemplo, al escribir el archivo):
-```json
-{
-  "success": false,
-  "error": "No se pudo guardar el archivo de reporte"
-}
-```
-
-### Ejemplo de Request:
 ```http
-POST /api/clients/greenhouse-1/msad/reports
+POST /api/clients/mushroom1/msad/reports
 Content-Type: application/json
 {
   "start_date": "2025-04-01",
@@ -62,71 +14,117 @@ Content-Type: application/json
   "format": "json"
 }
 ```
-
-### Ejemplo de Response exitosa:
+Respuesta:
 ```json
 {
   "success": true,
-  "report_id": "report_20250401_20250410_sensors_20250426_120000",
-  "client_id": "greenhouse-1",
-  "data_type": "sensors",
-  "filename": "greenhouse-1_sensors_2025-04-01_to_2025-04-10_20250426_120000.json",
-  "format": "json",
-  "period": {
-    "start": "2025-04-01",
-    "end": "2025-04-10"
-  },
+  "filename": "mushroom1_sensors_20250401_to_20250410_20250426_143022.json",
   "records": 128,
   "size": 12345,
-  "created_at": "2025-04-26T12:00:00",
-  "download_url": "/api/clients/greenhouse-1/msad/reports/download/greenhouse-1_sensors_2025-04-01_to_2025-04-10_20250426_120000.json"
+  "download_url": "/api/clients/mushroom1/msad/reports/download/mushroom1_sensors_20250401_to_20250410_20250426_143022.json"
 }
 ```
-
-### Notas importantes
-- El nombre del archivo generado incluye el rango de fechas, tipo de datos y un timestamp único.
-- Todos los errores son registrados en logs para facilitar la trazabilidad.
-- Si el directorio de reportes no existe, se crea automáticamente.
-- El endpoint es robusto ante fallos de base de datos o sistema de archivos.
-
 ---
+**GET** http://192.168.184.223:5000/api/clients/<client_id>/msad/reports
 
-## 2. Listar reportes de un cliente
-
-**GET** `/api/clients/<client_id>/msad/reports`
-
-Lista todos los reportes generados para un cliente específico. Permite filtrar por formato y tipo de datos.
-
-### Parámetros opcionales
-- `format`: `json` o `csv`. Solo muestra reportes de ese formato.
-- `data_type`: `sensors`, `events` o `actuators`. Solo muestra reportes de ese tipo.
-
-### Validaciones y manejo de errores
-- Si el cliente no tiene reportes, la lista será vacía:
-```json
-{
-  "success": true,
-  "reports": [],
-  "total": 0
-}
-```
-- Si ocurre un error de sistema, por ejemplo, al acceder al directorio:
-```json
-{
-  "success": false,
-  "error": "No se pudo acceder al directorio de reportes"
-}
-```
-
-### Ejemplo de Request:
 ```http
-GET /api/clients/greenhouse-1/msad/reports?format=json&data_type=sensors
+GET /api/clients/mushroom1/msad/reports?format=json&data_type=sensors
 ```
-
-### Ejemplo de Response exitosa:
+Respuesta:
 ```json
 {
   "success": true,
+  "reports": [
+    {
+      "filename": "mushroom1_sensors_20250401_to_20250410.json",
+      "created_at": "2025-04-26T12:00:00",
+      "size": 12345,
+      "format": "json",
+      "data_type": "sensors",
+      "download_url": "/api/clients/mushroom1/msad/reports/download/mushroom1_sensors_20250401_to_20250410.json"
+    }
+  ],
+  "total": 1
+}
+```
+---
+**GET** http://192.168.184.223:5000/api/clients/<client_id>/msad/reports/download/<filename>
+
+```http
+GET /api/clients/mushroom1/msad/reports/download/mushroom1_sensors_20250401_to_20250410.json
+```
+Respuesta: descarga directa del archivo (json o csv)
+---
+**GET** http://192.168.184.223:5000/api/msad/reports/scheduler/status?client_id=<client_id>
+
+```http
+GET /api/msad/reports/scheduler/status?client_id=mushroom1
+```
+Respuesta:
+```json
+{
+  "success": true,
+  "is_running": true,
+  "config": {
+    "interval_hours": 24,
+    "client_id": "mushroom1",
+    "start_date": "2025-04-01",
+    "end_date": "2025-04-10",
+    "data_type": "sensors",
+    "format": "json"
+  },
+  "last_run": "2025-04-26T16:00:00",
+  "next_run": "2025-04-27T16:00:00"
+}
+```
+---
+**POST** http://192.168.184.223:5000/api/msad/reports/scheduler/start
+
+```http
+POST /api/msad/reports/scheduler/start
+Content-Type: application/json
+{
+  "interval_hours": 24,
+  "client_id": "mushroom1",
+  "start_date": "2025-04-01",
+  "end_date": "2025-04-10",
+  "data_type": "sensors",
+  "format": "json"
+}
+```
+Respuesta:
+```json
+{
+  "success": true,
+  "message": "Programador de reportes iniciado",
+  "config": {
+    "interval_hours": 24,
+    "client_id": "mushroom1",
+    "start_date": "2025-04-01",
+    "end_date": "2025-04-10",
+    "data_type": "sensors",
+    "format": "json"
+  }
+}
+```
+---
+**POST** http://192.168.184.223:5000/api/msad/reports/scheduler/stop
+
+```http
+POST /api/msad/reports/scheduler/stop
+Content-Type: application/json
+{
+  "client_id": "mushroom1"
+}
+```
+Respuesta:
+```json
+{
+  "success": true,
+  "message": "Programador de reportes detenido"
+}
+```
+
   "reports": [
     {
       "report_id": "report_20250401_20250410_sensors_20250426_120000",
@@ -274,13 +272,6 @@ DELETE /api/clients/greenhouse-1/msad/reports/report_20250401_20250410_sensors_2
 
 ---
 
-## 6. Programador automático de reportes (Scheduler)
-
-Permite automatizar la generación periódica de reportes para un cliente, rango de fechas, tipo de datos y formato. El sistema es robusto ante errores y valida todos los parámetros antes de iniciar la programación.
-
-### Parámetros requeridos y validaciones
-- `interval_hours`: entero, obligatorio. Mayor que 0.
-- `client_id`, `start_date`, `end_date`, `data_type`, `format`: igual que en la generación manual de reportes.
 
 ### Ejemplo de inicio/reinicio del scheduler
 **POST** `/api/msad/reports/scheduler/start`

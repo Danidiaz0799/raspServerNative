@@ -3,7 +3,15 @@ Report routes module for MSAD - Data reporting and export endpoints
 """
 from flask import Blueprint, jsonify, request, send_file
 from msad.core.system import logger
-from msad.core.reports import generate_report, list_reports, get_report_file, start_report_scheduler, stop_report_scheduler, get_report_scheduler_status
+from msad.core.reports import (
+    generate_report,
+    list_reports,
+    get_report_file,
+    start_report_scheduler_for_client,
+    stop_report_scheduler_for_client,
+    get_report_scheduler_status_for_client,
+    get_all_report_schedulers_status
+)
 
 import os
 
@@ -182,18 +190,21 @@ def create_report_blueprint():
     @report_bp.route('/msad/reports/scheduler/start', methods=['POST'])
     def start_report_scheduler_endpoint():
         """
-        Inicia o reinicia el programador de reportes automáticos.
-        Cuerpo JSON opcional con parámetros:
-        - interval_hours: int
-        - client_id: str
-        - start_date: str (YYYY-MM-DD)
-        - end_date: str (YYYY-MM-DD)
-        - data_type: str (sensors, events, actuators)
-        - format: str (json, csv)
+        Inicia o reinicia el programador de reportes automáticos para un cliente específico.
+        Body JSON:
+        - interval_hours: int (obligatorio)
+        - client_id: str (obligatorio)
+        - start_date: str (YYYY-MM-DD o YYYY-MM-DD HH:MM)
+        - end_date: str (YYYY-MM-DD o YYYY-MM-DD HH:MM)
+        - data_type: str (opcional)
+        - format: str (opcional)
         """
         try:
             config = request.json if request.is_json else None
-            start_report_scheduler(config)
+            if not config or not config.get('client_id'):
+                return jsonify({"success": False, "error": "client_id es obligatorio"}), 400
+            client_id = config['client_id']
+            start_report_scheduler_for_client(client_id, config)
             return jsonify({"success": True, "message": "Programador de reportes iniciado", "config": config}), 200
         except Exception as e:
             logger.error(f"Error al iniciar programador de reportes: {str(e)}")
@@ -202,10 +213,16 @@ def create_report_blueprint():
     @report_bp.route('/msad/reports/scheduler/stop', methods=['POST'])
     def stop_report_scheduler_endpoint():
         """
-        Detiene el programador de reportes automáticos.
+        Detiene el programador de reportes automáticos para un cliente específico.
+        Body JSON:
+        - client_id: str (obligatorio)
         """
         try:
-            stop_report_scheduler()
+            data = request.json if request.is_json else None
+            if not data or not data.get('client_id'):
+                return jsonify({"success": False, "error": "client_id es obligatorio"}), 400
+            client_id = data['client_id']
+            stop_report_scheduler_for_client(client_id)
             return jsonify({"success": True, "message": "Programador de reportes detenido"}), 200
         except Exception as e:
             logger.error(f"Error al detener programador de reportes: {str(e)}")
@@ -214,10 +231,16 @@ def create_report_blueprint():
     @report_bp.route('/msad/reports/scheduler/status', methods=['GET'])
     def get_report_scheduler_status_endpoint():
         """
-        Obtiene el estado actual del programador de reportes.
+        Obtiene el estado del programador de reportes de un cliente o de todos.
+        Query param:
+        - client_id: str (opcional)
         """
         try:
-            status = get_report_scheduler_status()
+            client_id = request.args.get('client_id')
+            if client_id:
+                status = get_report_scheduler_status_for_client(client_id)
+            else:
+                status = get_all_report_schedulers_status()
             return jsonify(status), 200
         except Exception as e:
             logger.error(f"Error al obtener estado del programador de reportes: {str(e)}")
