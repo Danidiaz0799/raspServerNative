@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmushroom_automation=self.webpackChunkmushroom_automation||[]).push([[423],{6423:(m,t,o)=>{o.r(t),o.d(t,{informationRoutes:()=>n});const n=[{path:"reports",loadComponent:()=>Promise.all([o.e(310),o.e(76),o.e(206)]).then(o.bind(o,1206)).then(s=>s.ReportsComponent),title:"Reportes"},{path:"",redirectTo:"reports",pathMatch:"full"}]}}]);

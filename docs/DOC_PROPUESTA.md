@@ -1,4 +1,4 @@
-# Sistema de Gestión Centralizada de Datos y Control Ambiental para Múltiples Cultivos de Orellana Rosada con Módulo de Almacenamiento y Datos (MSAD)
+# Sistema centralizado para la gestión, control y automatización ambiental con módulo de almacenamiento y gestión de datos para cultivos de Orellana Rosada.
 
 ## 2.1 Planteamiento del Problema
 

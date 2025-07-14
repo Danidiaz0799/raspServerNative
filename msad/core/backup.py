@@ -18,6 +18,8 @@ BACKUP_DIR = os.path.join(STORAGE_PATH, "backups")
 MAX_BACKUPS = 10  # Máximo número de backups a mantener
 backup_thread = None
 is_running = False
+interval_hours = 24  # Valor por defecto y global
+last_backup_time = None
 
 def init_backup_system():
     """
@@ -142,12 +144,15 @@ def list_backups(backup_type=None):
     Lista todos los backups disponibles
     
     Args:
-        backup_type: Filtrar por tipo ("manual" o "auto")
+        backup_type: Filtrar por tipo ("manual", "auto" o "scheduled")
     
     Returns:
         dict: Lista de backups
     """
     try:
+        # Permitir 'scheduled' como sinónimo de 'auto' para compatibilidad frontend
+        if backup_type == 'scheduled':
+            backup_type = 'auto'
         backups = []
         
         # Verificar que el directorio existe
@@ -161,10 +166,10 @@ def list_backups(backup_type=None):
                 
             # Extraer tipo de backup
             parts = filename.split("_")
-            if len(parts) < 3:
+            if len(parts) < 4:
                 continue
-                
-            file_backup_type = parts[1]
+            
+            file_backup_type = parts[2]  # Ahora correctamente 'manual' o 'auto'
             
             # Filtrar por tipo si se especificó
             if backup_type and file_backup_type != backup_type:
@@ -332,51 +337,46 @@ def restore_backup(filename):
             "error": str(e)
         }
 
-def start_backup_scheduler(interval_hours=24):
+def start_backup_scheduler(new_interval_hours=24):
     """
-    Inicia el programador de backups automáticos
-    
-    Args:
-        interval_hours: Intervalo en horas entre backups
-        
-    Returns:
-        bool: True si se inició correctamente, False en caso contrario
+    Inicia o reinicia el programador de backups automáticos con un nuevo intervalo
     """
-    global backup_thread, is_running
-    
+    global backup_thread, is_running, interval_hours
+
     try:
-        if is_running:
-            logger.warning("El programador de backups ya está en ejecución")
-            return True
-            
-        # Configurar programación
+        # Detener cualquier scheduler previo
+        stop_backup_scheduler()
         schedule.clear()
         
-        # Programar backup cada X horas
-        if interval_hours <= 0:
-            interval_hours = 24  # Valor por defecto
-            
-        schedule.every(interval_hours).hours.do(lambda: create_backup(manual=False))
+        # Validar y guardar el nuevo intervalo
+        if new_interval_hours <= 0:
+            new_interval_hours = 24
+        interval_hours = new_interval_hours
+
+        # Programar backup automático y registrar last_backup_time
+        def backup_job():
+            global last_backup_time
+            result = create_backup(manual=False)
+            if result and result.get("success"):
+                last_backup_time = datetime.datetime.now().isoformat()
+            return result
+
+        schedule.every(interval_hours).hours.do(backup_job)
         logger.info(f"Backups automáticos programados cada {interval_hours} horas")
-        
-        # Función para ejecutar el programador en un hilo separado
+
         def run_scheduler():
             global is_running
             is_running = True
-            
             logger.info("Iniciando programador de backups")
             while is_running:
                 schedule.run_pending()
-                time.sleep(60)  # Verificar cada minuto
-                
+                time.sleep(60)
             logger.info("Programador de backups detenido")
-        
-        # Iniciar hilo
+
         backup_thread = threading.Thread(target=run_scheduler, daemon=True)
         backup_thread.start()
-        
+
         return True
-        
     except Exception as e:
         logger.error(f"Error al iniciar programador de backups: {str(e)}")
         is_running = False
@@ -414,44 +414,37 @@ def stop_backup_scheduler():
 def get_backup_status():
     """
     Obtiene el estado actual del sistema de backups
-    
-    Returns:
-        dict: Estado del sistema de backups
     """
     try:
-        # Contar backups
+        global interval_hours, last_backup_time
         backup_count = len(list_backups()["backups"])
-        
-        # Espacio ocupado
         total_size = sum(os.path.getsize(os.path.join(BACKUP_DIR, f)) 
                          for f in os.listdir(BACKUP_DIR) 
                          if os.path.isfile(os.path.join(BACKUP_DIR, f)))
-        
-        # Formatear tamaño
         if total_size < 1024 * 1024:
             size_str = f"{total_size / 1024:.2f} KB"
         else:
             size_str = f"{total_size / (1024 * 1024):.2f} MB"
-        
         last_backup = None
         next_backup = None
-        
-        # Obtener último backup
+        # Obtener último backup realmente realizado
         backups = list_backups()
         if backups["total"] > 0:
             last_backup = backups["backups"][0]["created_at"]
-        
-        # Obtener próximo backup programado
+        # Si tenemos un backup automático reciente, úsalo
+        if last_backup_time:
+            last_backup = last_backup_time
+        # Calcular próximo backup
         if is_running:
             for job in schedule.get_jobs():
                 next_run = job.next_run
                 if next_run:
                     next_backup = next_run.isoformat()
                 break
-                
         return {
             "success": True,
             "is_running": is_running,
+            "interval_hours": interval_hours,
             "backup_count": backup_count,
             "total_size": total_size,
             "formatted_size": size_str,
@@ -459,10 +452,9 @@ def get_backup_status():
             "next_backup": next_backup,
             "backup_dir": BACKUP_DIR
         }
-        
     except Exception as e:
         logger.error(f"Error al obtener estado de backups: {str(e)}")
         return {
             "success": False,
             "error": str(e)
-        } 
+        }

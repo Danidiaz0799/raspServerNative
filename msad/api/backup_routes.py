@@ -143,7 +143,10 @@ def create_backup_blueprint():
             
             # Get status
             result = get_backup_status()
-            
+            # Siempre incluir interval_hours
+            if 'interval_hours' not in result:
+                from msad.core.backup import interval_hours as global_interval_hours
+                result['interval_hours'] = global_interval_hours
             return jsonify(result)
                 
         except Exception as e:
@@ -173,11 +176,13 @@ def create_backup_blueprint():
                 result = stop_backup_scheduler()
                 message = "Backup scheduler stopped"
             
+            status = get_backup_status()
+            status['interval_hours'] = interval_hours  # Asegura que se devuelve el valor correcto
             if result:
                 return jsonify({
                     "success": True,
                     "message": message,
-                    "status": get_backup_status()
+                    "status": status
                 })
             else:
                 return jsonify({

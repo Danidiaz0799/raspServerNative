@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import sqlite3
+import os
 
 # Funcion para crear las tablas en la base de datos
 def create_tables():
-    conn = sqlite3.connect('/home/stevpi/Desktop/raspServer/sensor_data.db')
+    # Usar una ruta relativa a la ubicación del script
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sensor_data.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
     # Crear tabla para datos de sensore SHT3x

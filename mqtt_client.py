@@ -12,11 +12,11 @@ from functools import lru_cache
 import threading
 
 client = None
-client_last_events = {}  # Diccionario para rastrear el último evento por cliente y tipo
-client_actuator_cache = {}  # Caché de actuadores por cliente
-client_status_update_time = {}  # Último momento en que se actualizó el estado de un cliente
+client_last_events = {}  # Diccionario para rastrear el ï¿½ltimo evento por cliente y tipo
+client_actuator_cache = {}  # Cachï¿½ de actuadores por cliente
+client_status_update_time = {}  # ï¿½ltimo momento en que se actualizï¿½ el estado de un cliente
 
-# Límite de tiempo para actualizar el estado del cliente (segundos)
+# Lï¿½mite de tiempo para actualizar el estado del cliente (segundos)
 CLIENT_STATUS_UPDATE_INTERVAL = 60
 
 # Bucle de eventos para operaciones asincronas
@@ -24,7 +24,7 @@ loop = None
 loop_thread = None
 loop_ready = threading.Event()
 
-# Extraer client_id del tópico con regex compilado para mayor eficiencia
+# Extraer client_id del tï¿½pico con regex compilado para mayor eficiencia
 _client_id_pattern = re.compile(r'clients/([^/]+)/')
 
 def extract_client_id(topic):
@@ -44,7 +44,7 @@ def run_coroutine(coro):
 # Manejo de mensajes optimizado
 def on_message(client, userdata, msg):
     try:
-        # Extraer el client_id del tópico
+        # Extraer el client_id del tï¿½pico
         client_id = extract_client_id(msg.topic)
         if not client_id:
             print(f"No se pudo extraer client_id del topico: {msg.topic}")
@@ -57,7 +57,7 @@ def on_message(client, userdata, msg):
             run_coroutine(update_client_status(client_id))
             client_status_update_time[client_id] = current_time
         
-        # Procesar el mensaje según el tópico
+        # Procesar el mensaje segï¿½n el tï¿½pico
         if msg.topic == f'clients/{client_id}/sensor/sht3x':
             data = msg.payload.decode('utf-8', errors='ignore').split(',')
             if len(data) == 2:
@@ -87,7 +87,7 @@ async def handle_sht3x_message(client_id, data):
         if client_id not in client_last_events:
             client_last_events[client_id] = {'temp': 0, 'hum': 0}
         
-        # Obtener parámetros ideales (ahora con caché)
+        # Obtener parï¿½metros ideales (ahora con cachï¿½)
         ideal_temp_params = await get_ideal_params(client_id, 'temperatura')
         ideal_humidity_params = await get_ideal_params(client_id, 'humedad')
         
@@ -119,16 +119,16 @@ async def handle_sht3x_message(client_id, data):
                 )
                 client_last_events[client_id]['hum'] = current_time
         
-        # Verificar modo automático y actualizar actuadores
+        # Verificar modo automï¿½tico y actualizar actuadores
         app_state = await get_app_state(client_id)
         if app_state == 'automatico':
             await update_actuators(client_id, temperatura, humedad)
     except Exception as e:
         print(f"Error procesando mensaje SHT3x: {e}")
 
-# Función para obtener y almacenar en caché los actuadores
+# Funciï¿½n para obtener y almacenar en cachï¿½ los actuadores
 async def get_cached_actuator(client_id, name):
-    # Usar caché si está disponible
+    # Usar cachï¿½ si estï¿½ disponible
     cache_key = f"{client_id}_{name}"
     if cache_key in client_actuator_cache:
         return client_actuator_cache[cache_key]
@@ -142,7 +142,7 @@ async def get_cached_actuator(client_id, name):
 
 async def update_actuators(client_id, temperature, humidity):
     try:
-        # Obtener parámetros ideales (caché)
+        # Obtener parï¿½metros ideales (cachï¿½)
         ideal_temp_params = await get_ideal_params(client_id, 'temperatura')
         ideal_humidity_params = await get_ideal_params(client_id, 'humedad')
         
@@ -154,7 +154,7 @@ async def update_actuators(client_id, temperature, humidity):
         min_humidity = ideal_humidity_params['min_value']
         max_humidity = ideal_humidity_params['max_value']
         
-        # Obtener actuadores con caché
+        # Obtener actuadores con cachï¿½
         light_actuator = await get_cached_actuator(client_id, "Iluminacion")
         fan_actuator = await get_cached_actuator(client_id, "Ventilacion")
         humidifier_actuator = await get_cached_actuator(client_id, "Humidificador")
@@ -163,7 +163,7 @@ async def update_actuators(client_id, temperature, humidity):
         if not all([light_actuator, fan_actuator, humidifier_actuator, motor_actuator]):
             return
         
-        # Lista para todas las tareas de actualización
+        # Lista para todas las tareas de actualizaciï¿½n
         all_tasks = []
         
         # Acciones para temperatura
@@ -199,29 +199,29 @@ async def update_actuators(client_id, temperature, humidity):
     except Exception as e:
         print(f"Error actualizando actuadores: {e}")
 
-# Caché para el estado del actuador
+# Cachï¿½ para el estado del actuador
 _actuator_state_cache = {}
 _actuator_last_update = {}
 ACTUATOR_CACHE_DURATION = 5  # Segundos
 
 async def update_actuator_and_log(client_id, actuator_id, state, description, topic):
     try:
-        # Verificar si el cambio es necesario usando caché
+        # Verificar si el cambio es necesario usando cachï¿½
         cache_key = f"{client_id}_{actuator_id}"
         current_time = time.time()
         
-        # Si el estado está en caché y es reciente, usarlo
+        # Si el estado estï¿½ en cachï¿½ y es reciente, usarlo
         if (cache_key in _actuator_state_cache and
             current_time - _actuator_last_update.get(cache_key, 0) < ACTUATOR_CACHE_DURATION):
             current_state = _actuator_state_cache[cache_key]
         else:
             # Obtener de la base de datos
             current_state = await get_actuator_state(client_id, actuator_id)
-            # Actualizar caché
+            # Actualizar cachï¿½
             _actuator_state_cache[cache_key] = current_state
             _actuator_last_update[cache_key] = current_time
         
-        # Actualizar sólo si es necesario
+        # Actualizar sï¿½lo si es necesario
         if current_state != state:
             # Primero actualizar la base de datos
             await update_actuator_state(client_id, actuator_id, state)
@@ -232,7 +232,7 @@ async def update_actuator_and_log(client_id, actuator_id, state, description, to
                 client.publish(topic, message, qos=1)  # QoS 1 para asegurar al menos una entrega
                 print(f"Publicando mensaje MQTT - Topico: {topic}, Mensaje: {message}")
             
-            # Actualizar caché
+            # Actualizar cachï¿½
             _actuator_state_cache[cache_key] = state
             _actuator_last_update[cache_key] = current_time
             
@@ -241,20 +241,20 @@ async def update_actuator_and_log(client_id, actuator_id, state, description, to
     except Exception as e:
         print(f"Error en update_actuator_and_log: {e}")
 
-# Cola de mensajes para publicación MQTT
+# Cola de mensajes para publicaciï¿½n MQTT
 _mqtt_message_queue = []
 _last_mqtt_publish = time.time()
 MAX_QUEUE_SIZE = 10
 MAX_QUEUE_TIME = 0.1  # segundos
 
-# Función para publicar mensajes MQTT
+# Funciï¿½n para publicar mensajes MQTT
 async def publish_message(topic, message):
     global client, _mqtt_message_queue, _last_mqtt_publish
     
     _mqtt_message_queue.append((topic, message))
     current_time = time.time()
     
-    # Publicar inmediatamente si la cola está llena o ha pasado suficiente tiempo
+    # Publicar inmediatamente si la cola estï¿½ llena o ha pasado suficiente tiempo
     if len(_mqtt_message_queue) >= MAX_QUEUE_SIZE or current_time - _last_mqtt_publish > MAX_QUEUE_TIME:
         await _process_mqtt_queue()
 
@@ -275,7 +275,7 @@ async def _process_mqtt_queue():
                 print(f"Procesando cola MQTT - Topico: {topic}, Mensaje: {message}")
             except Exception as e:
                 print(f"Error al publicar mensaje MQTT: {e}")
-                # Reintentar más tarde
+                # Reintentar mï¿½s tarde
                 _mqtt_message_queue.append((topic, message))
     else:
         print("Cliente MQTT no esta conectado, reintentando mas tarde...")
@@ -287,7 +287,7 @@ def run_event_loop():
     loop_ready.set()
     loop.run_forever()
 
-# Configuración del cliente MQTT
+# Configuraciï¿½n del cliente MQTT
 def connect_mqtt():
     global client, loop, loop_thread
     
@@ -303,13 +303,13 @@ def connect_mqtt():
     client = mqtt.Client()
     client.on_message = on_message
     
-    # Configurar reconexión automática
+    # Configurar reconexiï¿½n automï¿½tica
     client.reconnect_delay_set(min_delay=1, max_delay=120)
     
     try:
         client.connect('localhost', 1883, 60)
         
-        # Suscribirse a todos los tópicos de clientes
+        # Suscribirse a todos los tï¿½picos de clientes
         client.subscribe('clients/+/sensor/sht3x')
         client.subscribe('clients/+/register')
         
